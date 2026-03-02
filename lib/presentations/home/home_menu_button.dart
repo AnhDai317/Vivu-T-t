@@ -9,25 +9,17 @@ class HomeMenuButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      _MenuItem(icon: Icons.local_florist_rounded, label: 'Hoa Đào'),
-      _MenuItem(icon: Icons.redeem_rounded, label: 'Lì Xì'),
-      _MenuItem(icon: Icons.temple_buddhist_rounded, label: 'Lễ Chùa'),
-      _MenuItem(icon: Icons.restaurant_rounded, label: 'Mỹ Vị'),
+      _MenuItem(icon: Icons.menu_book_rounded, label: 'Sổ tay\nLịch trình'),
+      _MenuItem(icon: Icons.checklist_rounded, label: 'Checklist\nHành trang'),
+      _MenuItem(icon: Icons.map_rounded, label: 'Bản đồ\nTết'),
+      _MenuItem(icon: Icons.assistant_navigation, label: 'Gợi ý\nĐiểm đến'),
     ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: items
-            .map(
-              (item) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: _MenuCell(item: item),
-                ),
-              ),
-            )
-            .toList(),
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: items.map((item) => _MenuCell(item: item)).toList(),
       ),
     );
   }
@@ -58,7 +50,7 @@ class _MenuCell extends StatelessWidget {
               border: Border.all(color: AppColors.primary.withOpacity(0.06)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(0.04),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -66,14 +58,15 @@ class _MenuCell extends StatelessWidget {
             ),
             child: Icon(item.icon, color: AppColors.primary, size: 28),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
-            item.label.toUpperCase(),
+            item.label,
+            textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF57534E), // stone-600
-              letterSpacing: 0.3,
+              color: const Color(0xFF57534E),
+              height: 1.2,
             ),
           ),
         ],

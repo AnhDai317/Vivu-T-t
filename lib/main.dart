@@ -7,7 +7,7 @@ import 'package:vivu_tet/data/implementations/mapper/auth_mapper.dart';
 import 'package:vivu_tet/data/implementations/repositories/auth_repository.dart';
 
 import 'package:vivu_tet/presentations/auth/login_page.dart';
-import 'package:vivu_tet/presentations/home/home_page.dart';
+import 'package:vivu_tet/main_screen.dart'; // <-- ĐÃ SỬA IMPORT
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/viewmodel/login/login_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/logout/logout_viewmodel.dart';
@@ -52,7 +52,8 @@ class ViVuTetApp extends StatelessWidget {
       title: 'ViVu Tết',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: isLoggedIn ? const HomePage() : const LoginPage(),
+      // <-- ĐÃ SỬA: Gọi MainScreen thay vì HomePage
+      home: isLoggedIn ? const MainScreen() : const LoginPage(),
     );
   }
 }

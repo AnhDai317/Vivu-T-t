@@ -1,5 +1,5 @@
 
-import 'package:vivu_tet/interfaces/domain/entities/auth_session.dart';
+import 'package:vivu_tet/domain/entities/auth_session.dart';
 
 abstract class IauthRepository {
   Future<AuthSession> login(String email, String passWord);

@@ -1,7 +1,7 @@
 import 'package:vivu_tet/data/dtos/auth/login_request_dtos.dart';
 import 'package:vivu_tet/data/dtos/auth/login_response_dtos.dart';
 import 'package:vivu_tet/data/dtos/auth/register_request_dtos.dart';
-import 'package:vivu_tet/interfaces/domain/entities/auth_session.dart';
+import 'package:vivu_tet/domain/entities/auth_session.dart';
 
 import '../../interfaces/api/iauth_api.dart';
 import '../../interfaces/mapper/imapper.dart';

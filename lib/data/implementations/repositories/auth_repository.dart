@@ -1,6 +1,6 @@
 import 'package:vivu_tet/data/dtos/auth/login_response_dtos.dart';
-import 'package:vivu_tet/interfaces/domain/entities/auth_session.dart';
-import 'package:vivu_tet/interfaces/domain/entities/user.dart';
+import 'package:vivu_tet/domain/entities/auth_session.dart';
+import 'package:vivu_tet/domain/entities/user.dart';
 import '../../interfaces/mapper/imapper.dart';
 
 class AuthMapper implements Imapper<LoginResponseDto, AuthSession> {
