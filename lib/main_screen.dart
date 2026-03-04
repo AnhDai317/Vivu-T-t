@@ -9,6 +9,7 @@ import 'package:vivu_tet/presentations/planner/trip_list_screen.dart';
 import 'package:vivu_tet/presentations/profile/profile_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/presentations/shared/widgets/custom_bottom_nav.dart';
+import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 
 class MainScreen extends StatefulWidget {
@@ -19,14 +20,15 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // 0=Lịch trình, 1=Bản đồ, 2=Checklist, 3=Cá nhân
   int _selectedIndex = 0;
 
   late final HomeViewModel _homeVm = buildHome()..loadTrips();
+  late final ChecklistViewModel _checklistVm = buildChecklist();
 
   @override
   void dispose() {
     _homeVm.dispose();
+    _checklistVm.dispose();
     super.dispose();
   }
 
@@ -34,17 +36,20 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _homeVm,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: _homeVm),
+        ChangeNotifierProvider.value(value: _checklistVm),
+      ],
       child: Scaffold(
         backgroundColor: AppColors.warmCream,
         body: IndexedStack(
           index: _selectedIndex,
           children: const [
-            HomePage(), // 0
-            MapScreen(), // 1
-            ChecklistScreen(), // 2
-            ProfileScreen(), // 3
+            HomePage(),
+            MapScreen(),
+            ChecklistScreen(),
+            ProfileScreen(),
           ],
         ),
         floatingActionButton: Container(
