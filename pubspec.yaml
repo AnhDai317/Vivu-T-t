@@ -11,7 +11,11 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  url_launcher: ^6.3.0
   cupertino_icons: ^1.0.8
+  uuid: ^4.4.0 
 
   # State management
   provider: ^6.1.2

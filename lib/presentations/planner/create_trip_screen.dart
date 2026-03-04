@@ -1,233 +1,182 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:vivu_tet/di.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
+import 'package:vivu_tet/viewmodel/planner/create_trip_viewmodel.dart';
 
-// --- MODEL TẠM THỜI (Sau này bạn tách ra thư mục domain/entities) ---
-class TripActivity {
-  TimeOfDay time;
-  String title;
-  String location;
-
-  TripActivity({
-    required this.time,
-    required this.title,
-    required this.location,
-  });
-}
-
-class CreateTripScreen extends StatefulWidget {
+class CreateTripScreen extends StatelessWidget {
   const CreateTripScreen({super.key});
 
   @override
-  State<CreateTripScreen> createState() => _CreateTripScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => buildCreateTrip(),
+      child: const _CreateTripBody(),
+    );
+  }
 }
 
-class _CreateTripScreenState extends State<CreateTripScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
+class _CreateTripBody extends StatelessWidget {
+  const _CreateTripBody();
 
-  // Danh sách các hoạt động trong ngày
-  final List<TripActivity> _activities = [];
+  String _fmt(int h, int m) =>
+      '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
 
-  // Hàm chọn ngày
-  Future<void> _selectDate() async {
+  Future<void> _selectDate(BuildContext context, CreateTripViewModel vm) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: vm.selectedDate,
       firstDate: DateTime.now(),
       lastDate: DateTime(2027),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: AppColors.brownDeep,
-            ),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+            onSurface: AppColors.brownDeep,
           ),
-          child: child!,
-        );
-      },
+        ),
+        child: child!,
+      ),
     );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-    }
+    if (picked != null) vm.setDate(picked);
   }
 
-  // Hàm format giờ cho đẹp (VD: 08:05 thay vì 8:5)
-  String _formatTime(TimeOfDay time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return "$hour:$minute";
-  }
-
-  // Popup Thêm hoạt động mới
-  void _showAddActivityDialog() {
+  void _showAddDialog(BuildContext context, CreateTripViewModel vm) {
     TimeOfDay selectedTime = TimeOfDay.now();
-    final TextEditingController actTitleController = TextEditingController();
-    final TextEditingController actLocationController = TextEditingController();
+    final titleCtrl = TextEditingController();
+    final locationCtrl = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(
-                'Thêm lịch trình',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Nút chọn giờ
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(
-                        Icons.access_time_filled_rounded,
-                        color: AppColors.primary,
-                      ),
-                      title: Text(
-                        'Thời gian: ${_formatTime(selectedTime)}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.edit, size: 18),
-                      onTap: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: selectedTime,
-                        );
-                        if (time != null)
-                          setDialogState(() => selectedTime = time);
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: actTitleController,
-                      decoration: InputDecoration(
-                        hintText: 'Tên hoạt động (VD: Lễ chùa)',
-                        filled: true,
-                        fillColor: AppColors.warmCream,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: actLocationController,
-                      decoration: InputDecoration(
-                        hintText: 'Địa điểm (VD: Trấn Quốc)',
-                        filled: true,
-                        fillColor: AppColors.warmCream,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'HỦY',
-                    style: TextStyle(color: Colors.grey),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Thêm lịch trình',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.access_time_filled_rounded,
+                    color: AppColors.primary,
                   ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  title: Text(
+                    'Thời gian: ${selectedTime.format(ctx)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  onPressed: () {
-                    if (actTitleController.text.isNotEmpty) {
-                      setState(() {
-                        _activities.add(
-                          TripActivity(
-                            time: selectedTime,
-                            title: actTitleController.text.trim(),
-                            location: actLocationController.text.trim(),
-                          ),
-                        );
-                        // Sắp xếp lại danh sách theo thứ tự thời gian
-                        _activities.sort(
-                          (a, b) => (a.time.hour * 60 + a.time.minute)
-                              .compareTo(b.time.hour * 60 + b.time.minute),
-                        );
-                      });
-                      Navigator.pop(context);
-                    }
+                  trailing: const Icon(Icons.edit, size: 18),
+                  onTap: () async {
+                    final t = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime,
+                    );
+                    if (t != null) setS(() => selectedTime = t);
                   },
-                  child: const Text(
-                    'THÊM',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Tên hoạt động (VD: Lễ chùa)',
+                    filled: true,
+                    fillColor: AppColors.warmCream,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: locationCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Địa điểm (VD: Trấn Quốc)',
+                    filled: true,
+                    fillColor: AppColors.warmCream,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
               ],
-            );
-          },
-        );
-      },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('HỦY', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                if (titleCtrl.text.isNotEmpty) {
+                  vm.addActivity(
+                    hour: selectedTime.hour,
+                    minute: selectedTime.minute,
+                    title: titleCtrl.text.trim(),
+                    location: locationCtrl.text.trim(),
+                  );
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text(
+                'THÊM',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  // Hàm xử lý khi bấm nút KHỞI TẠO
-  void _submitTrip() {
-    if (_titleController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên chuyến đi!')),
-      );
-      return;
-    }
-    if (_activities.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng thêm ít nhất 1 hoạt động!')),
-      );
-      return;
-    }
+  Future<void> _submit(BuildContext context, CreateTripViewModel vm) async {
+    final ok = await vm.createTrip();
+    if (!context.mounted) return;
 
-    // TODO: Gắn ViewModel gọi hàm lưu dữ liệu vào Database/API ở đây
-    print("==== DỮ LIỆU CHUYẾN ĐI TẠO THÀNH CÔNG ====");
-    print("Tên: ${_titleController.text}");
-    print(
-      "Ngày: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}",
-    );
-    print("Số hoạt động: ${_activities.length}");
-    for (var act in _activities) {
-      print("- ${_formatTime(act.time)} | ${act.title} | ${act.location}");
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Khởi tạo thành công! 🎉'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context, true); // ← trả true để MainScreen reload
+    } else if (vm.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(vm.errorMessage!)));
     }
-
-    // Hiển thị thông báo và quay về
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Khởi tạo thành công!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<CreateTripViewModel>();
+
     return Scaffold(
       backgroundColor: AppColors.warmCream,
       appBar: AppBar(
@@ -249,7 +198,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Tên chuyến đi
+            // Tên kế hoạch
             Text(
               'Tên kế hoạch',
               style: GoogleFonts.plusJakartaSans(
@@ -259,7 +208,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
             ),
             const SizedBox(height: 8),
             TextField(
-              controller: _titleController,
+              controller: vm.titleController,
               decoration: InputDecoration(
                 hintText: 'VD: Du xuân Mùng 1',
                 filled: true,
@@ -276,7 +225,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 2. Chọn Ngày
+            // Chọn ngày
             Text(
               'Ngày đi',
               style: GoogleFonts.plusJakartaSans(
@@ -286,7 +235,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
             ),
             const SizedBox(height: 8),
             GestureDetector(
-              onTap: _selectDate,
+              onTap: () => _selectDate(context, vm),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -305,7 +254,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                        '${vm.selectedDate.day}/${vm.selectedDate.month}/${vm.selectedDate.year}',
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -319,7 +268,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
             ),
             const SizedBox(height: 32),
 
-            // 3. Danh sách Timeline công việc
+            // Lịch trình
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -332,7 +281,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: _showAddActivityDialog,
+                  onPressed: () => _showAddDialog(context, vm),
                   icon: const Icon(Icons.add_circle, color: AppColors.primary),
                   label: const Text(
                     'Thêm',
@@ -345,7 +294,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               ],
             ),
 
-            if (_activities.isEmpty)
+            if (vm.activities.isEmpty)
               Container(
                 margin: const EdgeInsets.only(top: 10),
                 padding: const EdgeInsets.all(20),
@@ -355,7 +304,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                 ),
                 child: const Center(
                   child: Text(
-                    "Chưa có hoạt động nào.\nHãy bấm Thêm để lên lịch!",
+                    'Chưa có hoạt động nào.\nHãy bấm Thêm để lên lịch!',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey),
                   ),
@@ -365,19 +314,16 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _activities.length,
-                itemBuilder: (context, index) {
-                  final act = _activities[index];
+                itemCount: vm.activities.length,
+                itemBuilder: (_, index) {
+                  final act = vm.activities[index];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border(
-                        left: const BorderSide(
-                          color: AppColors.primary,
-                          width: 4,
-                        ),
+                      border: const Border(
+                        left: BorderSide(color: AppColors.primary, width: 4),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -398,7 +344,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          _formatTime(act.time),
+                          _fmt(act.hour, act.minute),
                           style: GoogleFonts.plusJakartaSans(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
@@ -433,8 +379,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                           Icons.delete_outline,
                           color: Colors.redAccent,
                         ),
-                        onPressed: () =>
-                            setState(() => _activities.removeAt(index)),
+                        onPressed: () => vm.removeActivity(index),
                       ),
                     ),
                   );
@@ -447,7 +392,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: ElevatedButton(
-            onPressed: _submitTrip, // Nút Khởi tạo
+            onPressed: vm.isLoading ? null : () => _submit(context, vm),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -456,15 +401,24 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               ),
               elevation: 6,
             ),
-            child: Text(
-              'KHỞI TẠO CHUYẾN ĐI',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: 1,
-              ),
-            ),
+            child: vm.isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    'KHỞI TẠO CHUYẾN ĐI',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
           ),
         ),
       ),

@@ -1,27 +1,39 @@
-
+// Data Layer
 import 'package:vivu_tet/data/implementations/api/auth_api.dart';
 import 'package:vivu_tet/data/implementations/local/app_database.dart';
 import 'package:vivu_tet/data/implementations/mapper/auth_mapper.dart';
 import 'package:vivu_tet/data/implementations/repositories/auth_repository.dart';
+import 'package:vivu_tet/data/implementations/repositories/trip_repository.dart';
+import 'package:vivu_tet/data/implementations/repositories/checklist_repository.dart'; // Thêm mới
+// ViewModel Layer
+import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/login/login_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/logout/logout_viewmodel.dart';
+import 'package:vivu_tet/viewmodel/planner/create_trip_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/register/register_viewmodel.dart';
-
-/// Khởi tạo toàn bộ dependency chain cho Login
-LoginViewModel buildLogin() {
+import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart'; // Thêm mới
+// Helper để tránh lặp lại code cho AuthRepository
+AuthRepository _getAuthRepo() {
   final api = AuthApi(AppDatabase.instance);
   final mapper = AuthMapper();
-  final repo = AuthRepository(api: api, mapper: mapper);
-  return LoginViewModel(repo);
+  return AuthRepository(api: api, mapper: mapper);
 }
 
-/// Khởi tạo toàn bộ dependency chain cho Register
-RegisterViewModel buildRegister() {
-  final api = AuthApi(AppDatabase.instance);
-  final mapper = AuthMapper();
-  final repo = AuthRepository(api: api, mapper: mapper);
-  return RegisterViewModel(repo);
-}
+// Factory Methods
+LoginViewModel buildLogin() => LoginViewModel(_getAuthRepo());
 
-/// LogoutViewModel – standalone
+RegisterViewModel buildRegister() => RegisterViewModel(_getAuthRepo());
+
 LogoutViewModel buildLogout() => LogoutViewModel();
+
+CreateTripViewModel buildCreateTrip() =>
+    CreateTripViewModel(TripRepository(AppDatabase.instance));
+
+HomeViewModel buildHome() =>
+    HomeViewModel(TripRepository(AppDatabase.instance));
+
+ChecklistViewModel buildChecklist() {
+  final repo = ChecklistRepository(AppDatabase.instance);
+  // Trả về instance và gọi load data ngay lập tức
+  return ChecklistViewModel(repo)..loadCategories();
+}

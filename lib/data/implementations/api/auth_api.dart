@@ -15,7 +15,7 @@ class AuthApi implements IauthApi {
   // ── LOGIN ────────────────────────────────────────────────────────────────
   @override
   Future<LoginResponseDto> login(LoginRequestDtos req) async {
-    final db = await database.db;
+    final db = await database.database;
 
     // 1. Tìm user theo email
     final rows = await db.query(
@@ -56,7 +56,7 @@ class AuthApi implements IauthApi {
   // ── REGISTER ─────────────────────────────────────────────────────────────
   @override
   Future<bool> register(RegisterRequestDto req) async {
-    final db = await database.db;
+    final db = await database.database;
 
     try {
       await db.insert('users', {
@@ -75,7 +75,7 @@ class AuthApi implements IauthApi {
   // ── GET CURRENT SESSION ──────────────────────────────────────────────────
   @override
   Future<LoginResponseDto?> getCurrentSession() async {
-    final db = await database.db;
+    final db = await database.database;
 
     final sessionRows = await db.query('session', where: 'id = 1', limit: 1);
     if (sessionRows.isEmpty) return null;
@@ -99,7 +99,7 @@ class AuthApi implements IauthApi {
   // ── LOGOUT ───────────────────────────────────────────────────────────────
   @override
   Future<void> logout() async {
-    final db = await database.db;
+    final db = await database.database;
     await db.delete('session');
   }
 }

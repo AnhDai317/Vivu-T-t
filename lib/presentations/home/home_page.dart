@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
+import 'package:vivu_tet/domain/entities/trip.dart';
+import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 import 'package:vivu_tet/presentations/home/home_header.dart';
 import 'package:vivu_tet/presentations/home/home_menu_button.dart';
-import 'package:vivu_tet/presentations/home/widgets/tet_day_model.dart';
+import 'package:vivu_tet/presentations/planner/trip_list_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 
 class HomePage extends StatelessWidget {
@@ -18,13 +21,10 @@ class HomePage extends StatelessWidget {
         statusBarIconBrightness: Brightness.dark,
       ),
     );
-
     return Scaffold(
       backgroundColor: AppColors.warmCream,
-      extendBodyBehindAppBar: false,
       appBar: const HomeHeader(),
       body: SingleChildScrollView(
-        // padding bottom 120 để khi cuộn xuống dưới cùng không bị Footer ở MainScreen che mất nội dung
         padding: const EdgeInsets.only(bottom: 120),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,9 +33,9 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 24),
             const HomeMenuButtons(),
             const SizedBox(height: 32),
-            _ScheduleSection(),
+            const _TripsSection(),
             const SizedBox(height: 28),
-            _GardenSection(),
+            const _GardenSection(),
             const SizedBox(height: 16),
           ],
         ),
@@ -44,7 +44,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// ── Widget Tổng quan (Hero Banner mới) ───────────────────────────────────────
+// ── Hero Banner ───────────────────────────────────────────────────────────────
 class _HeroBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -194,12 +194,31 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ── Lịch trình (Timeline View) ────────────────────────────────────────────────
-class _ScheduleSection extends StatelessWidget {
+// ── Trips Section ─────────────────────────────────────────────────────────────
+class _TripsSection extends StatelessWidget {
+  const _TripsSection();
+
+  // Helper push TripListScreen kèm vm
+  void _goToTripList(BuildContext context) {
+    final vm = context.read<HomeViewModel>();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: vm,
+          child: const TripListScreen(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Mock data, lấy 2 ngày gần nhất
-    final displayDays = tetDays.take(2).toList();
+    final vm = context.watch<HomeViewModel>();
+
+    final upcomingTrips = vm.trips.where((t) => !t.isPast || t.isToday).toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    final displayTrips = upcomingTrips.take(2).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +237,7 @@ class _ScheduleSection extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Sắp diễn ra',
+                    'Kế hoạch của bạn',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -227,13 +246,16 @@ class _ScheduleSection extends StatelessWidget {
                   ),
                 ],
               ),
-              Text(
-                'TẤT CẢ',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                  letterSpacing: 0.5,
+              GestureDetector(
+                onTap: () => _goToTripList(context),
+                child: Text(
+                  'TẤT CẢ',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
             ],
@@ -241,37 +263,126 @@ class _ScheduleSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // Timeline Layout
-        Padding(
-          padding: const EdgeInsets.only(left: 32, right: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: Colors.grey.shade300, width: 2),
+        if (vm.isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          )
+        else if (vm.trips.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.luggage_rounded,
+                    color: Colors.grey,
+                    size: 40,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Chưa có kế hoạch nào',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Bấm + để tạo chuyến đi đầu tiên!',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              children: displayDays.map((day) {
-                final isFirst = displayDays.indexOf(day) == 0;
-                return _TimelineItem(day: day, isHighlight: isFirst);
-              }).toList(),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 32, right: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: Colors.grey.shade300, width: 2),
+                ),
+              ),
+              child: Column(
+                children: displayTrips
+                    .asMap()
+                    .entries
+                    .map(
+                      (e) =>
+                          _TripTimelineItem(trip: e.value, isFirst: e.key == 0),
+                    )
+                    .toList(),
+              ),
             ),
           ),
-        ),
+          if (upcomingTrips.length > 2)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: GestureDetector(
+                onTap: () => _goToTripList(context),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.15),
+                    ),
+                  ),
+                  child: Text(
+                    'Xem thêm ${upcomingTrips.length - 2} kế hoạch →',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ],
     );
   }
 }
 
-class _TimelineItem extends StatelessWidget {
-  final TetDay day;
-  final bool isHighlight;
+class _TripTimelineItem extends StatelessWidget {
+  final Trip trip;
+  final bool isFirst;
+  const _TripTimelineItem({required this.trip, required this.isFirst});
 
-  const _TimelineItem({required this.day, required this.isHighlight});
+  String _formatDate(DateTime d) {
+    const weekdays = [
+      'CN',
+      'Thứ 2',
+      'Thứ 3',
+      'Thứ 4',
+      'Thứ 5',
+      'Thứ 6',
+      'Thứ 7',
+    ];
+    return '${weekdays[d.weekday % 7]}, ${d.day}/${d.month}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final dotColor = isHighlight ? AppColors.primary : Colors.grey.shade400;
+    final dotColor = isFirst ? AppColors.primary : Colors.grey.shade400;
 
     return Stack(
       children: [
@@ -289,15 +400,15 @@ class _TimelineItem extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(left: 16, bottom: 20),
+          padding: const EdgeInsets.only(left: 16, bottom: 16),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isHighlight ? Colors.white : Colors.white.withOpacity(0.6),
+              color: isFirst ? Colors.white : Colors.white.withOpacity(0.6),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.shade100),
-              boxShadow: isHighlight
+              boxShadow: isFirst
                   ? [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.03),
@@ -319,24 +430,24 @@ class _TimelineItem extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: isHighlight
+                        color: isFirst
                             ? AppColors.primary.withOpacity(0.1)
                             : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        day.lunarLabel.toUpperCase(),
+                        _formatDate(trip.startDate).toUpperCase(),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
-                          color: isHighlight
+                          color: isFirst
                               ? AppColors.primary
                               : Colors.grey.shade600,
                         ),
                       ),
                     ),
                     Text(
-                      '08:00', // Giả lập giờ
+                      '${trip.activities.length} h.động',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -347,32 +458,45 @@ class _TimelineItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  day.title,
+                  trip.title,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: AppColors.brownDeep,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_rounded,
-                      color: Colors.grey.shade500,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Tây Hồ, Hà Nội', // Giả lập location
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade600,
+                if (trip.activities.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 13,
+                        color: Colors.grey.shade500,
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${trip.activities.first.hour.toString().padLeft(2, '0')}:${trip.activities.first.minute.toString().padLeft(2, '0')} • ${trip.activities.first.title}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (trip.activities.length > 1)
+                        Text(
+                          '+${trip.activities.length - 1}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -382,9 +506,11 @@ class _TimelineItem extends StatelessWidget {
   }
 }
 
-// ── Vườn Hoa Section ──────────────────
+// ── Garden Section ────────────────────────────────────────────────────────────
 class _GardenSection extends StatelessWidget {
-  final _gardens = const [
+  const _GardenSection();
+
+  static const _gardens = [
     _GardenItem(
       tag: 'Hot',
       location: 'Nhật Tân, Hà Nội',

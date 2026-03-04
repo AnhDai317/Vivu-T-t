@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:vivu_tet/main_screen.dart';
 import 'package:vivu_tet/presentations/home/home_page.dart';
 import 'package:vivu_tet/viewmodel/login/login_viewmodel.dart';
 import '../shared/theme/app_theme.dart';
@@ -39,7 +40,9 @@ class _LoginPageState extends State<LoginPage> {
     if (ok && mounted) {
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
+        MaterialPageRoute(
+          builder: (_) => const MainScreen(),
+        ), // ← MainScreen thay vì HomePage
         (r) => false,
       );
     }
