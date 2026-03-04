@@ -6,50 +6,98 @@ import 'package:vivu_tet/domain/entities/checklist_item.dart';
 
 class ChecklistViewModel extends ChangeNotifier {
   final IChecklistRepository _repo;
-
-  // Sửa: static const thay vì const
   static const _uuid = Uuid();
 
   ChecklistViewModel(this._repo);
 
+  // Danh sách categories (chỉ metadata, không có items)
   List<ChecklistCategory> categories = [];
+
+  // Items của ngày đang chọn, group theo categoryId
+  Map<String, List<ChecklistItem>> itemsByCategory = {};
+
+  // Ngày đang xem
+  DateTime selectedDate = DateTime.now();
+
   bool isLoading = false;
   String? errorMessage;
 
-  int get totalDone =>
-      categories.expand((c) => c.items).where((i) => i.done).length;
+  // Format date thành key 'yyyy-MM-dd'
+  String _dateKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  int get totalAll => categories.expand((c) => c.items).length;
+  String get selectedDateKey => _dateKey(selectedDate);
 
-  double get totalProgress => totalAll == 0 ? 0 : totalDone / totalAll;
+  // Tổng done/total của ngày đang chọn
+  int get totalDone => itemsByCategory.values
+      .expand((list) => list)
+      .where((i) => i.done)
+      .length;
+
+  int get totalAll =>
+      itemsByCategory.values.expand((list) => list).length;
+
+  double get totalProgress =>
+      totalAll == 0 ? 0 : totalDone / totalAll;
+
+  // Done/total theo từng category
+  int doneInCategory(String catId) =>
+      (itemsByCategory[catId] ?? []).where((i) => i.done).length;
+
+  int totalInCategory(String catId) =>
+      (itemsByCategory[catId] ?? []).length;
+
+  List<ChecklistItem> itemsOfCategory(String catId) =>
+      itemsByCategory[catId] ?? [];
 
   Future<void> loadCategories() async {
     isLoading = true;
     notifyListeners();
-
     try {
       categories = await _repo.getCategories();
+      await _loadItemsForDate(selectedDate);
       errorMessage = null;
     } catch (e) {
-      errorMessage = 'Không thể tải checklist: $e';
+      errorMessage = 'Lỗi tải dữ liệu: $e';
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> toggleItem(String categoryId, String itemId, bool done) async {
-    // Cập nhật local ngay để UI mượt
-    final cat = categories.firstWhere((c) => c.id == categoryId);
-    final item = cat.items.firstWhere((i) => i.id == itemId);
+  Future<void> selectDate(DateTime date) async {
+    selectedDate = date;
+    notifyListeners();
+    await _loadItemsForDate(date);
+  }
+
+  Future<void> _loadItemsForDate(DateTime date) async {
+    final dateKey = _dateKey(date);
+    final items = await _repo.getItemsByDate(dateKey);
+
+    // Group theo categoryId
+    final map = <String, List<ChecklistItem>>{};
+    for (final cat in categories) {
+      map[cat.id] = [];
+    }
+    for (final item in items) {
+      map.putIfAbsent(item.categoryId, () => []).add(item);
+    }
+    itemsByCategory = map;
+    notifyListeners();
+  }
+
+  Future<void> toggleItem(
+      String categoryId, String itemId, bool done) async {
+    // Optimistic update
+    final list = itemsByCategory[categoryId] ?? [];
+    final item = list.firstWhere((i) => i.id == itemId);
     item.done = done;
     notifyListeners();
 
-    // Sync DB
     try {
       await _repo.toggleItem(itemId, done);
     } catch (e) {
-      // Rollback nếu lỗi
       item.done = !done;
       notifyListeners();
     }
@@ -60,38 +108,33 @@ class ChecklistViewModel extends ChangeNotifier {
       id: _uuid.v4(),
       categoryId: categoryId,
       title: title,
+      itemDate: selectedDateKey,
     );
 
-    // Cập nhật local trước
-    final cat = categories.firstWhere((c) => c.id == categoryId);
-    cat.items.add(newItem);
+    itemsByCategory.putIfAbsent(categoryId, () => []).add(newItem);
     notifyListeners();
 
-    // Sync DB
     try {
       await _repo.addItem(newItem);
     } catch (e) {
-      // Rollback
-      cat.items.removeLast();
+      itemsByCategory[categoryId]?.removeLast();
       notifyListeners();
     }
   }
 
   Future<void> deleteItem(String categoryId, String itemId) async {
-    final cat = categories.firstWhere((c) => c.id == categoryId);
-    final index = cat.items.indexWhere((i) => i.id == itemId);
-    final removed = cat.items[index];
+    final list = itemsByCategory[categoryId] ?? [];
+    final index = list.indexWhere((i) => i.id == itemId);
+    if (index < 0) return;
+    final removed = list[index];
 
-    // Cập nhật local trước
-    cat.items.removeAt(index);
+    list.removeAt(index);
     notifyListeners();
 
-    // Sync DB
     try {
       await _repo.deleteItem(itemId);
     } catch (e) {
-      // Rollback
-      cat.items.insert(index, removed);
+      list.insert(index, removed);
       notifyListeners();
     }
   }

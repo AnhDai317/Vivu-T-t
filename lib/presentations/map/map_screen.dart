@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,6 +20,12 @@ class _MapScreenState extends State<MapScreen>
   int _categoryIndex = 0;
   _Place? _selectedPlace;
 
+  // ── Về quê state ─────────────────────────────────────────────────
+  bool _locating = false;
+  final _originCtrl = TextEditingController(text: 'Hà Nội');
+  final _destCtrl = TextEditingController();
+
+  // ── Dữ liệu ──────────────────────────────────────────────────────
   static const _categories = [
     _Cat(icon: Icons.local_florist_rounded, label: 'Vườn hoa'),
     _Cat(icon: Icons.temple_buddhist_rounded, label: 'Chùa'),
@@ -121,13 +128,6 @@ class _MapScreenState extends State<MapScreen>
     ),
   ];
 
-  List<_Place> get _filtered =>
-      _places.where((p) => p.category == _categoryIndex).toList();
-
-  // ── Về quê state ────────────────────────────────────────────────
-  final _destCtrl = TextEditingController();
-  final _originCtrl = TextEditingController(text: 'Hà Nội');
-
   static const _hotRoutes = [
     _Route(label: 'HN → TP.HCM', origin: 'Hà Nội', dest: 'Hồ Chí Minh'),
     _Route(label: 'HN → Đà Nẵng', origin: 'Hà Nội', dest: 'Đà Nẵng'),
@@ -137,22 +137,125 @@ class _MapScreenState extends State<MapScreen>
     _Route(label: 'HCM → Cần Thơ', origin: 'Hồ Chí Minh', dest: 'Cần Thơ'),
   ];
 
+  List<_Place> get _filtered =>
+      _places.where((p) => p.category == _categoryIndex).toList();
+
   @override
   void dispose() {
     _tabCtrl.dispose();
-    _destCtrl.dispose();
     _originCtrl.dispose();
+    _destCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _openDirections(String origin, String dest) async {
-    final encoded = Uri.encodeComponent('$origin đến $dest');
-    final gmaps = Uri.parse('https://www.google.com/maps/dir/$encoded');
-    if (await canLaunchUrl(gmaps)) {
-      await launchUrl(gmaps, mode: LaunchMode.externalApplication);
+  // ── GPS ───────────────────────────────────────────────────────────
+  Future<void> _getLocation() async {
+    setState(() => _locating = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showSnack('Vui lòng bật GPS trên thiết bị');
+        return;
+      }
+
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) {
+          _showSnack('Cần cấp quyền truy cập vị trí');
+          return;
+        }
+      }
+      if (perm == LocationPermission.deniedForever) {
+        _showSnack('Vào Cài đặt → Ứng dụng để cấp quyền vị trí');
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _originCtrl.text =
+            '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+      });
+      _showSnack('Đã lấy vị trí hiện tại ✓');
+    } catch (e) {
+      _showSnack('Không lấy được vị trí: $e');
+    } finally {
+      if (mounted) setState(() => _locating = false);
     }
   }
 
+  // ── Chỉ đường ─────────────────────────────────────────────────────
+  Future<void> _openDirections(String origin, String dest) async {
+    if (dest.trim().isEmpty) {
+      _showSnack('Vui lòng nhập điểm đến');
+      return;
+    }
+
+    final destEnc = Uri.encodeComponent(dest);
+    final originEnc = Uri.encodeComponent(origin);
+
+    // Thử mở Google Maps app
+    final gmapsApp = Uri.parse('google.navigation:q=$destEnc&mode=d');
+    // Fallback: mở Google Maps trên browser
+    final gmapsWeb = Uri.parse(
+      'https://www.google.com/maps/dir/$originEnc/$destEnc',
+    );
+
+    try {
+      if (await canLaunchUrl(gmapsApp)) {
+        await launchUrl(gmapsApp);
+      } else {
+        await launchUrl(gmapsWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      _showSnack('Không thể mở bản đồ chỉ đường');
+    }
+  }
+
+  // Chỉ đường đến địa điểm trên map
+  Future<void> _directionsToPlace(_Place place) async {
+    final dest = Uri.encodeComponent(place.name);
+    final gmapsApp = Uri.parse('google.navigation:q=$dest&mode=d');
+    final gmapsWeb = Uri.parse(
+      'https://www.google.com/maps/search/${Uri.encodeComponent(place.name)}',
+    );
+    try {
+      if (await canLaunchUrl(gmapsApp)) {
+        await launchUrl(gmapsApp);
+      } else {
+        await launchUrl(gmapsWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      _showSnack('Không thể mở chỉ đường');
+    }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.plusJakartaSans(fontSize: 13)),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  Color _catColor(int i) {
+    const colors = [
+      AppColors.primary,
+      Color(0xFFF9A825), // amber
+      Color(0xFF8E24AA), // purple
+      Color(0xFF00897B), // teal
+    ];
+    return colors[i % colors.length];
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,7 +264,7 @@ class _MapScreenState extends State<MapScreen>
         bottom: false,
         child: Column(
           children: [
-            // ── Header ────────────────────────────────────────────────
+            // ── Header ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
               child: Column(
@@ -188,7 +291,7 @@ class _MapScreenState extends State<MapScreen>
               ),
             ),
 
-            // ── Tab bar ───────────────────────────────────────────────
+            // ── Tab bar ──────────────────────────────────────────────
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               padding: const EdgeInsets.all(4),
@@ -218,7 +321,7 @@ class _MapScreenState extends State<MapScreen>
               ),
             ),
 
-            // ── Tab views ─────────────────────────────────────────────
+            // ── Tab views ────────────────────────────────────────────
             Expanded(
               child: TabBarView(
                 controller: _tabCtrl,
@@ -232,10 +335,11 @@ class _MapScreenState extends State<MapScreen>
   }
 
   // ──────────────────────────────────────────────────────────────────
-  // Tab 1: Bản đồ điểm đến
+  // Tab 1: Bản đồ OSM + markers
   // ──────────────────────────────────────────────────────────────────
   Widget _buildMapTab() {
     final filtered = _filtered;
+    final color = _catColor(_categoryIndex);
 
     return Column(
       children: [
@@ -302,7 +406,7 @@ class _MapScreenState extends State<MapScreen>
 
         const SizedBox(height: 8),
 
-        // Bản đồ OpenStreetMap
+        // Bản đồ OSM
         Expanded(
           child: Stack(
             children: [
@@ -313,26 +417,24 @@ class _MapScreenState extends State<MapScreen>
                   onTap: (_, __) => setState(() => _selectedPlace = null),
                 ),
                 children: [
-                  // OSM tile layer
                   TileLayer(
                     urlTemplate:
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.vivu.tet',
                   ),
-                  // Markers
                   MarkerLayer(
                     markers: filtered.map((p) {
                       final isSelected = _selectedPlace == p;
                       return Marker(
                         point: LatLng(p.lat, p.lng),
-                        width: isSelected ? 120 : 44,
-                        height: isSelected ? 70 : 44,
+                        width: isSelected ? 130 : 40,
+                        height: isSelected ? 72 : 40,
                         child: GestureDetector(
                           onTap: () => setState(() => _selectedPlace = p),
                           child: _MapMarker(
                             place: p,
                             isSelected: isSelected,
-                            color: _catColor(_categoryIndex),
+                            color: color,
                           ),
                         ),
                       );
@@ -341,7 +443,7 @@ class _MapScreenState extends State<MapScreen>
                 ],
               ),
 
-              // Place detail card
+              // Place card bottom
               if (_selectedPlace != null)
                 Positioned(
                   left: 12,
@@ -349,10 +451,9 @@ class _MapScreenState extends State<MapScreen>
                   bottom: 12,
                   child: _PlaceCard(
                     place: _selectedPlace!,
-                    color: _catColor(_categoryIndex),
+                    color: color,
                     onClose: () => setState(() => _selectedPlace = null),
-                    onDirections: () =>
-                        _openDirections('Hà Nội', _selectedPlace!.name),
+                    onDirections: () => _directionsToPlace(_selectedPlace!),
                   ),
                 ),
             ],
@@ -387,6 +488,7 @@ class _MapScreenState extends State<MapScreen>
             ),
             child: Column(
               children: [
+                // ── Điểm xuất phát + GPS ────────────────────
                 Row(
                   children: [
                     const Icon(
@@ -410,6 +512,28 @@ class _MapScreenState extends State<MapScreen>
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide.none,
                           ),
+                          // Nút GPS
+                          suffixIcon: _locating
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: const Icon(
+                                    Icons.gps_fixed_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Lấy vị trí hiện tại',
+                                  onPressed: _getLocation,
+                                ),
                         ),
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w600,
@@ -419,8 +543,10 @@ class _MapScreenState extends State<MapScreen>
                     ),
                   ],
                 ),
+
+                // Đường chấm nối
                 Padding(
-                  padding: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.only(left: 9),
                   child: Column(
                     children: List.generate(
                       3,
@@ -433,6 +559,8 @@ class _MapScreenState extends State<MapScreen>
                     ),
                   ),
                 ),
+
+                // ── Điểm đến ────────────────────────────────
                 Row(
                   children: [
                     Icon(
@@ -465,21 +593,22 @@ class _MapScreenState extends State<MapScreen>
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 14),
+
+                // ── Nút chỉ đường ───────────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      if (_destCtrl.text.isNotEmpty) {
-                        _openDirections(_originCtrl.text, _destCtrl.text);
-                      }
-                    },
+                    onPressed: () =>
+                        _openDirections(_originCtrl.text, _destCtrl.text),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      elevation: 2,
                     ),
                     icon: const Icon(
                       Icons.navigation_rounded,
@@ -487,7 +616,7 @@ class _MapScreenState extends State<MapScreen>
                       size: 18,
                     ),
                     label: Text(
-                      'Mở chỉ đường',
+                      'Mở Google Maps chỉ đường',
                       style: GoogleFonts.plusJakartaSans(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -502,7 +631,7 @@ class _MapScreenState extends State<MapScreen>
 
           const SizedBox(height: 24),
 
-          // Tuyến đường hot
+          // ── Tuyến hot ─────────────────────────────────────
           Text(
             'Tuyến đường phổ biến',
             style: GoogleFonts.plusJakartaSans(
@@ -585,14 +714,14 @@ class _MapScreenState extends State<MapScreen>
 
           const SizedBox(height: 20),
 
-          // Tips về quê
+          // ── Tips ─────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withOpacity(0.08),
-                  Colors.orange.withOpacity(0.06),
+                  AppColors.primary.withOpacity(0.07),
+                  Colors.orange.withOpacity(0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
@@ -617,10 +746,11 @@ class _MapScreenState extends State<MapScreen>
                 ),
                 const SizedBox(height: 10),
                 ...[
-                  '🚗  Tránh khởi hành ngày 27-28 Tết, đường rất đông',
+                  '🚗  Tránh khởi hành ngày 27–28 Tết, đường rất đông',
                   '⏰  Nên đi sớm trước 6h sáng hoặc sau 20h tối',
-                  '⛽  Đổ đầy xăng trước, trạm xăng ngày Tết có thể đóng',
+                  '⛽  Đổ đầy xăng trước khi lên đường',
                   '📱  Tải bản đồ offline phòng mất sóng vùng núi',
+                  '🎒  Chuẩn bị đồ ăn nhẹ cho hành trình dài',
                 ].map(
                   (tip) => Padding(
                     padding: const EdgeInsets.only(bottom: 6),
@@ -641,19 +771,9 @@ class _MapScreenState extends State<MapScreen>
       ),
     );
   }
-
-  Color _catColor(int i) {
-    const colors = [
-      AppColors.primary,
-      Colors.amber,
-      Colors.purple,
-      Colors.teal,
-    ];
-    return colors[i % colors.length];
-  }
 }
 
-// ── Map marker ────────────────────────────────────────────────────────────────
+// ── Map Marker ────────────────────────────────────────────────────────────────
 class _MapMarker extends StatelessWidget {
   final _Place place;
   final bool isSelected;
@@ -687,6 +807,7 @@ class _MapMarker extends StatelessWidget {
                 color: AppColors.brownDeep,
               ),
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(height: 2),
@@ -725,12 +846,13 @@ class _MapMarker extends StatelessWidget {
   }
 }
 
-// ── Place card ────────────────────────────────────────────────────────────────
+// ── Place Card ────────────────────────────────────────────────────────────────
 class _PlaceCard extends StatelessWidget {
   final _Place place;
   final Color color;
   final VoidCallback onClose;
   final VoidCallback onDirections;
+
   const _PlaceCard({
     required this.place,
     required this.color,
@@ -755,6 +877,7 @@ class _PlaceCard extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Icon placeholder
           Container(
             width: 52,
             height: 52,
@@ -812,6 +935,7 @@ class _PlaceCard extends StatelessWidget {
           const SizedBox(width: 8),
           Column(
             children: [
+              // Nút đóng
               GestureDetector(
                 onTap: onClose,
                 child: Container(
@@ -829,6 +953,7 @@ class _PlaceCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
+              // Nút chỉ đường
               GestureDetector(
                 onTap: onDirections,
                 child: Container(

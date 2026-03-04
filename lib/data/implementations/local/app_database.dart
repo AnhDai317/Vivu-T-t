@@ -19,11 +19,10 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
-        // Bật foreign key support
         await db.execute('PRAGMA foreign_keys = ON');
       },
     );
@@ -31,7 +30,7 @@ class AppDatabase {
 
   // ── Tạo toàn bộ schema lần đầu ─────────────────────────────────
   Future<void> _onCreate(Database db, int version) async {
-    // ── Bảng users ───────────────────────────────────────────────
+    // ── users ────────────────────────────────────────────────────
     await db.execute('''
       CREATE TABLE users (
         id          TEXT PRIMARY KEY,
@@ -43,7 +42,7 @@ class AppDatabase {
       )
     ''');
 
-    // ── Bảng sessions ────────────────────────────────────────────
+    // ── sessions ─────────────────────────────────────────────────
     await db.execute('''
       CREATE TABLE sessions (
         id          TEXT PRIMARY KEY,
@@ -56,7 +55,7 @@ class AppDatabase {
       )
     ''');
 
-    // ── Bảng trips ───────────────────────────────────────────────
+    // ── trips ────────────────────────────────────────────────────
     await db.execute('''
       CREATE TABLE trips (
         id          TEXT PRIMARY KEY,
@@ -66,7 +65,7 @@ class AppDatabase {
       )
     ''');
 
-    // ── Bảng trip_activities ─────────────────────────────────────
+    // ── trip_activities ──────────────────────────────────────────
     await db.execute('''
       CREATE TABLE trip_activities (
         id        TEXT PRIMARY KEY,
@@ -81,7 +80,7 @@ class AppDatabase {
       )
     ''');
 
-    // ── Bảng checklist_categories ────────────────────────────────
+    // ── checklist_categories ─────────────────────────────────────
     await db.execute('''
       CREATE TABLE checklist_categories (
         id          TEXT PRIMARY KEY,
@@ -92,7 +91,7 @@ class AppDatabase {
       )
     ''');
 
-    // ── Bảng checklist_items ─────────────────────────────────────
+    // ── checklist_items ──────────────────────────────────────────
     await db.execute('''
       CREATE TABLE checklist_items (
         id          TEXT PRIMARY KEY,
@@ -100,19 +99,19 @@ class AppDatabase {
         title       TEXT NOT NULL,
         done        INTEGER NOT NULL DEFAULT 0,
         sort_order  INTEGER NOT NULL DEFAULT 0,
+        item_date   TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (category_id)
           REFERENCES checklist_categories(id)
           ON DELETE CASCADE
       )
     ''');
 
-    // Seed dữ liệu checklist mặc định
     await _seedChecklist(db);
   }
 
   // ── Migration ────────────────────────────────────────────────────
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // v1 → v2: thêm bảng trips + trip_activities
+    // v1 → v2: thêm trips + trip_activities
     if (oldVersion < 2) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS trips (
@@ -122,7 +121,6 @@ class AppDatabase {
           end_date    TEXT NOT NULL
         )
       ''');
-
       await db.execute('''
         CREATE TABLE IF NOT EXISTS trip_activities (
           id        TEXT PRIMARY KEY,
@@ -138,7 +136,7 @@ class AppDatabase {
       ''');
     }
 
-    // v2 → v3: thêm bảng checklist
+    // v2 → v3: thêm checklist (chưa có item_date)
     if (oldVersion < 3) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS checklist_categories (
@@ -149,7 +147,6 @@ class AppDatabase {
           sort_order  INTEGER NOT NULL DEFAULT 0
         )
       ''');
-
       await db.execute('''
         CREATE TABLE IF NOT EXISTS checklist_items (
           id          TEXT PRIMARY KEY,
@@ -162,12 +159,24 @@ class AppDatabase {
             ON DELETE CASCADE
         )
       ''');
-
       await _seedChecklist(db);
+    }
+
+    // v3 → v4: thêm cột item_date vào checklist_items
+    if (oldVersion < 4) {
+      // SQLite chỉ hỗ trợ ADD COLUMN, không DROP/MODIFY
+      try {
+        await db.execute('''
+          ALTER TABLE checklist_items
+          ADD COLUMN item_date TEXT NOT NULL DEFAULT ''
+        ''');
+      } catch (_) {
+        // Bỏ qua nếu cột đã tồn tại
+      }
     }
   }
 
-  // ── Seed checklist mặc định ──────────────────────────────────────
+  // ── Seed categories mặc định ─────────────────────────────────────
   Future<void> _seedChecklist(Database db) async {
     final cats = [
       {
@@ -200,144 +209,7 @@ class AppDatabase {
       },
     ];
 
-    final items = [
-      // ── Sắm Tết ───────────────────────────────────────────────
-      {
-        'id': 'i_1_1',
-        'category_id': 'cat_1',
-        'title': 'Mua bánh chưng / bánh tét',
-        'sort_order': 0,
-      },
-      {
-        'id': 'i_1_2',
-        'category_id': 'cat_1',
-        'title': 'Mua mứt Tết',
-        'sort_order': 1,
-      },
-      {
-        'id': 'i_1_3',
-        'category_id': 'cat_1',
-        'title': 'Mua hoa đào / mai',
-        'sort_order': 2,
-      },
-      {
-        'id': 'i_1_4',
-        'category_id': 'cat_1',
-        'title': 'Quần áo mới cho cả nhà',
-        'sort_order': 3,
-      },
-      {
-        'id': 'i_1_5',
-        'category_id': 'cat_1',
-        'title': 'Phong bì lì xì',
-        'sort_order': 4,
-      },
-      {
-        'id': 'i_1_6',
-        'category_id': 'cat_1',
-        'title': 'Hương & nến thờ',
-        'sort_order': 5,
-      },
-
-      // ── Dọn nhà ───────────────────────────────────────────────
-      {
-        'id': 'i_2_1',
-        'category_id': 'cat_2',
-        'title': 'Dọn dẹp toàn bộ nhà',
-        'sort_order': 0,
-      },
-      {
-        'id': 'i_2_2',
-        'category_id': 'cat_2',
-        'title': 'Trang trí cây mai / đào',
-        'sort_order': 1,
-      },
-      {
-        'id': 'i_2_3',
-        'category_id': 'cat_2',
-        'title': 'Trang trí đèn lồng',
-        'sort_order': 2,
-      },
-      {
-        'id': 'i_2_4',
-        'category_id': 'cat_2',
-        'title': 'Lau dọn bàn thờ',
-        'sort_order': 3,
-      },
-      {
-        'id': 'i_2_5',
-        'category_id': 'cat_2',
-        'title': 'Thay ga gối mới',
-        'sort_order': 4,
-      },
-
-      // ── Ẩm thực ───────────────────────────────────────────────
-      {
-        'id': 'i_3_1',
-        'category_id': 'cat_3',
-        'title': 'Chuẩn bị nguyên liệu gói bánh',
-        'sort_order': 0,
-      },
-      {
-        'id': 'i_3_2',
-        'category_id': 'cat_3',
-        'title': 'Nấu thịt kho tàu',
-        'sort_order': 1,
-      },
-      {
-        'id': 'i_3_3',
-        'category_id': 'cat_3',
-        'title': 'Làm dưa hành / kiệu',
-        'sort_order': 2,
-      },
-      {
-        'id': 'i_3_4',
-        'category_id': 'cat_3',
-        'title': 'Đặt bàn ăn tất niên',
-        'sort_order': 3,
-      },
-      {
-        'id': 'i_3_5',
-        'category_id': 'cat_3',
-        'title': 'Mua rượu / nước ngọt đãi khách',
-        'sort_order': 4,
-      },
-
-      // ── Du xuân ───────────────────────────────────────────────
-      {
-        'id': 'i_4_1',
-        'category_id': 'cat_4',
-        'title': 'Đặt vé / phương tiện di chuyển',
-        'sort_order': 0,
-      },
-      {
-        'id': 'i_4_2',
-        'category_id': 'cat_4',
-        'title': 'Đặt khách sạn nếu đi xa',
-        'sort_order': 1,
-      },
-      {
-        'id': 'i_4_3',
-        'category_id': 'cat_4',
-        'title': 'Lên lịch thăm họ hàng',
-        'sort_order': 2,
-      },
-      {
-        'id': 'i_4_4',
-        'category_id': 'cat_4',
-        'title': 'Chuẩn bị quà biếu',
-        'sort_order': 3,
-      },
-      {
-        'id': 'i_4_5',
-        'category_id': 'cat_4',
-        'title': 'Sạc pin điện thoại / máy ảnh',
-        'sort_order': 4,
-      },
-    ];
-
     final batch = db.batch();
-
     for (final cat in cats) {
       batch.insert(
         'checklist_categories',
@@ -345,15 +217,8 @@ class AppDatabase {
         conflictAlgorithm: ConflictAlgorithm.ignore,
       );
     }
-
-    for (final item in items) {
-      batch.insert('checklist_items', {
-        ...item,
-        'done': 0,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
-
     await batch.commit(noResult: true);
+    // Items giờ không seed sẵn — user tự thêm theo từng ngày
   }
 
   // ── Xoá DB (dùng khi debug) ──────────────────────────────────────

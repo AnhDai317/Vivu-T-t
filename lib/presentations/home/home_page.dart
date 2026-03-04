@@ -2,203 +2,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
+import 'package:url_launcher/url_launcher.dart';
+import 'package:vivu_tet/data/implementations/api/weather_api.dart';
+import 'package:vivu_tet/data/static/spring_destinations_data.dart';
+import 'package:vivu_tet/domain/entities/spring_destination.dart';
 import 'package:vivu_tet/domain/entities/trip.dart';
-import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
-import 'package:vivu_tet/presentations/home/home_header.dart';
-import 'package:vivu_tet/presentations/home/home_menu_button.dart';
+import 'package:vivu_tet/domain/entities/weather.dart';
+import 'package:vivu_tet/main_screen.dart';
+import 'package:vivu_tet/presentations/destinations/destinations_screen.dart';
 import 'package:vivu_tet/presentations/planner/trip_list_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
+import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-    return Scaffold(
-      backgroundColor: AppColors.warmCream,
-      appBar: const HomeHeader(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _HeroBanner(),
-            const SizedBox(height: 24),
-            const HomeMenuButtons(),
-            const SizedBox(height: 32),
-            const _TripsSection(),
-            const SizedBox(height: 28),
-            const _GardenSection(),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
+  State<HomePage> createState() => _HomePageState();
 }
 
-// ── Hero Banner ───────────────────────────────────────────────────────────────
-class _HeroBanner extends StatelessWidget {
+class _HomePageState extends State<HomePage> {
+  Weather? _weather;
+  bool _weatherLoading = true;
+
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: AppColors.festiveGradient,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.calendar_month,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'ĐẾM NGƯỢC',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white.withOpacity(0.9),
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                        children: const [
-                          TextSpan(text: 'Còn '),
-                          TextSpan(
-                            text: '15',
-                            style: TextStyle(color: AppColors.gold),
-                          ),
-                          TextSpan(text: ' ngày'),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      'Đến Tết Nguyên Đán',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: Colors.white.withOpacity(0.2),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.cloud_queue_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'HÀ NỘI',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white.withOpacity(0.9),
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '18°C',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Se lạnh • Có mưa',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(color: Colors.white24, height: 1),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Chạm để xem chi tiết thời tiết Tết',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.7),
-                  ),
-                ),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white.withOpacity(0.7),
-                  size: 16,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    _loadWeather();
   }
-}
 
-// ── Trips Section ─────────────────────────────────────────────────────────────
-class _TripsSection extends StatelessWidget {
-  const _TripsSection();
+  Future<void> _loadWeather() async {
+    try {
+      final w = await WeatherApi().getCurrentWeather();
+      if (mounted) setState(() => _weather = w);
+    } catch (_) {
+      // Giữ null nếu lỗi, UI hiện placeholder
+    } finally {
+      if (mounted) setState(() => _weatherLoading = false);
+    }
+  }
 
-  // Helper push TripListScreen kèm vm
+  // Đếm ngược đến Tết 2027 (29/1/2027)
+  int _daysUntilTet() {
+    final tet2027 = DateTime(2027, 1, 29);
+    final now = DateTime.now();
+    final diff = tet2027.difference(DateTime(now.year, now.month, now.day));
+    return diff.inDays.clamp(0, 9999);
+  }
+
   void _goToTripList(BuildContext context) {
     final vm = context.read<HomeViewModel>();
     Navigator.push(
@@ -212,458 +63,810 @@ class _TripsSection extends StatelessWidget {
     );
   }
 
+  void _goToDestinations(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const DestinationsScreen()),
+    );
+  }
+
+  Future<void> _openMaps(SpringDestination dest) async {
+    final q = Uri.encodeComponent(dest.name);
+    final gmapsApp = Uri.parse('google.navigation:q=$q&mode=d');
+    final gmapsWeb = Uri.parse('https://www.google.com/maps/search/$q');
+    try {
+      if (await canLaunchUrl(gmapsApp)) {
+        await launchUrl(gmapsApp);
+      } else {
+        await launchUrl(gmapsWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+
+    return Scaffold(
+      backgroundColor: AppColors.warmCream,
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _loadWeather,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── AppBar ────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Xin chào! 👋',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            'ViVu Tết 2027',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.brownDeep,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.06),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.notifications_outlined,
+                          color: AppColors.brownDeep,
+                          size: 22,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Hero Banner (đếm ngược + thời tiết) ──────────
+                _HeroBanner(
+                  daysLeft: _daysUntilTet(),
+                  weather: _weather,
+                  weatherLoading: _weatherLoading,
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Menu 4 nút ────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _MenuBtn(
+                        emoji: '📔',
+                        label: 'Sổ tay',
+                        onTap: () => _goToTripList(context),
+                      ),
+                      _MenuBtn(
+                        emoji: '✅',
+                        label: 'Checklist',
+                        // Tab index 2 = Checklist
+                        onTap: () => _switchTab(context, 2),
+                      ),
+                      _MenuBtn(
+                        emoji: '🗺️',
+                        label: 'Bản đồ',
+                        // Tab index 1 = Map
+                        onTap: () => _switchTab(context, 1),
+                      ),
+                      _MenuBtn(
+                        emoji: '📍',
+                        label: 'Gợi ý',
+                        onTap: () => _goToDestinations(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // ── Kế hoạch sắp tới ──────────────────────────────
+                _TripsSection(onViewAll: () => _goToTripList(context)),
+
+                const SizedBox(height: 28),
+
+                // ── Gợi ý điểm du xuân ────────────────────────────
+                _DestinationsSection(
+                  onViewAll: () => _goToDestinations(context),
+                  onOpenMaps: _openMaps,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Chuyển tab trong MainScreen
+  void _switchTab(BuildContext context, int index) {
+    context.findAncestorStateOfType<MainScreenState>()?.switchTab(index);
+  }
+}
+
+// Interface để MainScreen expose tab switch
+// (Xem hướng dẫn dưới về main_screen.dart)
+// ── Hero Banner ───────────────────────────────────────────────────────────────
+class _HeroBanner extends StatelessWidget {
+  final int daysLeft;
+  final Weather? weather;
+  final bool weatherLoading;
+
+  const _HeroBanner({
+    required this.daysLeft,
+    required this.weather,
+    required this.weatherLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: AppColors.festiveGradient,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.25),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Đếm ngược
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.celebration_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'ĐẾM NGƯỢC TẾT 2027',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white.withOpacity(0.85),
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: '$daysLeft',
+                            style: const TextStyle(color: Color(0xFFFFD54F)),
+                          ),
+                          const TextSpan(text: ' ngày'),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      'đến Tết Đinh Mùi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Divider
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.white.withOpacity(0.2),
+                ),
+
+                // Thời tiết
+                SizedBox(
+                  width: 110,
+                  child: weatherLoading
+                      ? Column(
+                          children: [
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Đang tải...',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        )
+                      : weather == null
+                      ? Column(
+                          children: [
+                            const Text('🌡️', style: TextStyle(fontSize: 24)),
+                            Text(
+                              'Không có\ndữ liệu',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                color: Colors.white.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'HÀ NỘI',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white.withOpacity(0.85),
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  weather!.icon,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${weather!.temperature.toStringAsFixed(0)}°C',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              weather!.description,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Menu Button ───────────────────────────────────────────────────────────────
+class _MenuBtn extends StatelessWidget {
+  final String emoji;
+  final String label;
+  final VoidCallback onTap;
+  const _MenuBtn({
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(emoji, style: const TextStyle(fontSize: 26)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.brownDeep,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Trips Section ─────────────────────────────────────────────────────────────
+class _TripsSection extends StatelessWidget {
+  final VoidCallback onViewAll;
+  const _TripsSection({required this.onViewAll});
+
+  String _formatDate(DateTime d) {
+    const w = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    return '${w[d.weekday % 7]}, ${d.day}/${d.month}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HomeViewModel>();
-
-    final upcomingTrips = vm.trips.where((t) => !t.isPast || t.isToday).toList()
+    final upcoming = vm.trips.where((t) => !t.isPast || t.isToday).toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
-    final displayTrips = upcomingTrips.take(2).toList();
+    final display = upcoming.take(2).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '📅 Kế hoạch sắp tới',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.brownDeep,
+                ),
+              ),
+              GestureDetector(
+                onTap: onViewAll,
+                child: Text(
+                  'Xem tất cả',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        if (vm.isLoading)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(color: AppColors.primary),
+          )
+        else if (vm.trips.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GestureDetector(
+              onTap: onViewAll,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.grey.shade200,
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Text('📋', style: TextStyle(fontSize: 32)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Chưa có kế hoạch nào',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Bấm + để tạo chuyến đi đầu tiên!',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: display.map((t) => _TripCard(trip: t)).toList(),
+            ),
+          ),
+
+        if (upcoming.length > 2) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GestureDetector(
+              onTap: onViewAll,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                ),
+                child: Text(
+                  'Xem thêm ${upcoming.length - 2} kế hoạch →',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _TripCard extends StatelessWidget {
+  final Trip trip;
+  const _TripCard({required this.trip});
+
+  String _fmt(DateTime d) {
+    const w = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    return '${w[d.weekday % 7]}, ${d.day}/${d.month}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              trip.shortDateLabel,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  trip.title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brownDeep,
+                  ),
+                ),
+                if (trip.activities.isNotEmpty)
+                  Text(
+                    '${trip.activities.length} hoạt động • ${_fmt(trip.startDate)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (trip.isToday)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'HÔM NAY',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Destinations Section ──────────────────────────────────────────────────────
+class _DestinationsSection extends StatelessWidget {
+  final VoidCallback onViewAll;
+  final Function(SpringDestination) onOpenMaps;
+
+  const _DestinationsSection({
+    required this.onViewAll,
+    required this.onOpenMaps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = SpringDestinationsData.featured;
+
+    return Column(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.event_note,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Kế hoạch của bạn',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.brownDeep,
-                    ),
-                  ),
-                ],
+              Text(
+                '🌸 Gợi ý du xuân',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.brownDeep,
+                ),
               ),
               GestureDetector(
-                onTap: () => _goToTripList(context),
+                onTap: onViewAll,
                 child: Text(
-                  'TẤT CẢ',
+                  'Xem tất cả',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.primary,
-                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
 
-        if (vm.isLoading)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
-          )
-        else if (vm.trips.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.luggage_rounded,
-                    color: Colors.grey,
-                    size: 40,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Chưa có kế hoạch nào',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Bấm + để tạo chuyến đi đầu tiên!',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: Colors.grey.shade400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 32, right: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Colors.grey.shade300, width: 2),
-                ),
-              ),
-              child: Column(
-                children: displayTrips
-                    .asMap()
-                    .entries
-                    .map(
-                      (e) =>
-                          _TripTimelineItem(trip: e.value, isFirst: e.key == 0),
-                    )
-                    .toList(),
-              ),
-            ),
-          ),
-          if (upcomingTrips.length > 2)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: GestureDetector(
-                onTap: () => _goToTripList(context),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.primary.withOpacity(0.15),
-                    ),
-                  ),
-                  child: Text(
-                    'Xem thêm ${upcomingTrips.length - 2} kế hoạch →',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class _TripTimelineItem extends StatelessWidget {
-  final Trip trip;
-  final bool isFirst;
-  const _TripTimelineItem({required this.trip, required this.isFirst});
-
-  String _formatDate(DateTime d) {
-    const weekdays = [
-      'CN',
-      'Thứ 2',
-      'Thứ 3',
-      'Thứ 4',
-      'Thứ 5',
-      'Thứ 6',
-      'Thứ 7',
-    ];
-    return '${weekdays[d.weekday % 7]}, ${d.day}/${d.month}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final dotColor = isFirst ? AppColors.primary : Colors.grey.shade400;
-
-    return Stack(
-      children: [
-        Positioned(
-          left: -6,
-          top: 10,
-          child: Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.warmCream, width: 2),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 16, bottom: 16),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isFirst ? Colors.white : Colors.white.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade100),
-              boxShadow: isFirst
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isFirst
-                            ? AppColors.primary.withOpacity(0.1)
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _formatDate(trip.startDate).toUpperCase(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: isFirst
-                              ? AppColors.primary
-                              : Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${trip.activities.length} h.động',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  trip.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.brownDeep,
-                  ),
-                ),
-                if (trip.activities.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 13,
-                        color: Colors.grey.shade500,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '${trip.activities.first.hour.toString().padLeft(2, '0')}:${trip.activities.first.minute.toString().padLeft(2, '0')} • ${trip.activities.first.title}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (trip.activities.length > 1)
-                        Text(
-                          '+${trip.activities.length - 1}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Garden Section ────────────────────────────────────────────────────────────
-class _GardenSection extends StatelessWidget {
-  const _GardenSection();
-
-  static const _gardens = [
-    _GardenItem(
-      tag: 'Hot',
-      location: 'Nhật Tân, Hà Nội',
-      name: 'Thung Lũng Hoa Đào',
-      desc: 'Sắc xuân rực rỡ với hàng nghìn gốc đào cổ.',
-    ),
-    _GardenItem(
-      tag: 'Mới',
-      location: 'Văn Giang, Hưng Yên',
-      name: 'Vườn Quất Di Sản',
-      desc: 'Không gian nghệ thuật cây cảnh truyền thống.',
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(
-            'Gợi ý điểm du xuân',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.brownDeep,
-            ),
-          ),
-        ),
         const SizedBox(height: 12),
+
         SizedBox(
           height: 180,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: _gardens.length,
-            itemBuilder: (_, i) => Padding(
-              padding: EdgeInsets.only(right: i < _gardens.length - 1 ? 12 : 0),
-              child: _GardenCard(item: _gardens[i]),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GardenItem {
-  final String tag, location, name, desc;
-  const _GardenItem({
-    required this.tag,
-    required this.location,
-    required this.name,
-    required this.desc,
-  });
-}
-
-class _GardenCard extends StatelessWidget {
-  const _GardenCard({required this.item});
-  final _GardenItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 160,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
+            itemCount: featured.length,
+            itemBuilder: (_, i) {
+              final dest = featured[i];
+              return GestureDetector(
+                onTap: () => onOpenMaps(dest),
                 child: Container(
-                  height: 90,
-                  width: double.infinity,
-                  color: Colors.grey.shade200,
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+                  width: 150,
+                  margin: EdgeInsets.only(
+                    right: i < featured.length - 1 ? 12 : 0,
                   ),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    '4.8★',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.brownDeep,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.near_me_rounded,
-                      color: Colors.grey.shade400,
-                      size: 12,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '12km • Hà Nội',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Emoji + Hot badge
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            dest.emoji,
+                            style: const TextStyle(fontSize: 28),
+                          ),
+                          if (dest.isHot)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '🔥',
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        dest.name,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade500,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.brownDeep,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 10,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              dest.location,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                color: Colors.grey.shade500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star_rounded,
+                            size: 11,
+                            color: Colors.amber,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${dest.rating}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.amber.shade700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.navigation_rounded,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

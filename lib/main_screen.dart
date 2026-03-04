@@ -5,7 +5,6 @@ import 'package:vivu_tet/presentations/checklist/checklist_screen.dart';
 import 'package:vivu_tet/presentations/home/home_page.dart';
 import 'package:vivu_tet/presentations/map/map_screen.dart';
 import 'package:vivu_tet/presentations/planner/create_trip_screen.dart';
-import 'package:vivu_tet/presentations/planner/trip_list_screen.dart';
 import 'package:vivu_tet/presentations/profile/profile_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/presentations/shared/widgets/custom_bottom_nav.dart';
@@ -16,14 +15,17 @@ class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainScreen> createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   late final HomeViewModel _homeVm = buildHome()..loadTrips();
   late final ChecklistViewModel _checklistVm = buildChecklist();
+
+  // Expose để HomePage gọi switch tab
+  void switchTab(int index) => setState(() => _selectedIndex = index);
 
   @override
   void dispose() {
@@ -31,8 +33,6 @@ class _MainScreenState extends State<MainScreen> {
     _checklistVm.dispose();
     super.dispose();
   }
-
-  void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +46,10 @@ class _MainScreenState extends State<MainScreen> {
         body: IndexedStack(
           index: _selectedIndex,
           children: const [
-            HomePage(),
-            MapScreen(),
-            ChecklistScreen(),
-            ProfileScreen(),
+            HomePage(), // 0
+            MapScreen(), // 1
+            ChecklistScreen(), // 2
+            ProfileScreen(), // 3
           ],
         ),
         floatingActionButton: Container(
@@ -75,7 +75,7 @@ class _MainScreenState extends State<MainScreen> {
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: CustomBottomNav(
           currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
+          onTap: (i) => setState(() => _selectedIndex = i),
         ),
       ),
     );
