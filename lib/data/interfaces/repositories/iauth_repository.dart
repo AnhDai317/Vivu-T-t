@@ -1,4 +1,3 @@
-
 import 'package:vivu_tet/domain/entities/auth_session.dart';
 
 abstract class IauthRepository {
@@ -11,4 +10,9 @@ abstract class IauthRepository {
   });
   Future<AuthSession?> getCurrentSession();
   Future<void> logout();
+  Future<void> changePassword({
+    required String userId,
+    required String oldPassword,
+    required String newPassword,
+  });
 }

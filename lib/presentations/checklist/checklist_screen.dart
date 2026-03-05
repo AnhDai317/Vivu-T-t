@@ -9,15 +9,13 @@ class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key});
 
   @override
-  State<ChecklistScreen> createState() =>
-      _ChecklistScreenState();
+  State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
 
 class _ChecklistScreenState extends State<ChecklistScreen> {
   int _selectedCat = 0;
 
-  Future<void> _pickDate(
-      BuildContext context, ChecklistViewModel vm) async {
+  Future<void> _pickDate(BuildContext context, ChecklistViewModel vm) async {
     final picked = await showDatePicker(
       context: context,
       initialDate: vm.selectedDate,
@@ -38,21 +36,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   void _showAddDialog(
-      BuildContext context,
-      ChecklistViewModel vm,
-      ChecklistCategory cat) {
+      BuildContext context, ChecklistViewModel vm, ChecklistCategory cat) {
     final ctrl = TextEditingController();
     final catColor = Color(cat.colorValue);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: Text('Thêm việc cần làm',
-            style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w800,
-                color: AppColors.brownDeep)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Thêm việc cần làm',
+          style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800, color: AppColors.brownDeep),
+        ),
         content: TextField(
           controller: ctrl,
           autofocus: true,
@@ -70,8 +67,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text('Huỷ',
                 style: GoogleFonts.plusJakartaSans(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w600)),
+                    color: Colors.grey, fontWeight: FontWeight.w600)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -87,8 +83,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             },
             child: Text('Thêm',
                 style: GoogleFonts.plusJakartaSans(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700)),
+                    color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -96,8 +91,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   String _fmtDate(DateTime d) {
-    const w = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4',
-                'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const w = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
     final isToday = DateTime.now().day == d.day &&
         DateTime.now().month == d.month &&
         DateTime.now().year == d.year;
@@ -112,37 +106,34 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     if (vm.isLoading && vm.categories.isEmpty) {
       return const Scaffold(
         backgroundColor: AppColors.warmCream,
-        body: Center(child: CircularProgressIndicator(
-            color: AppColors.primary)),
+        body: Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
-    if (_selectedCat >= vm.categories.length &&
-        vm.categories.isNotEmpty) {
+    if (_selectedCat >= vm.categories.length && vm.categories.isNotEmpty) {
       _selectedCat = 0;
     }
 
-    final cat = vm.categories.isNotEmpty
-        ? vm.categories[_selectedCat]
-        : null;
+    final cat =
+        vm.categories.isNotEmpty ? vm.categories[_selectedCat] : null;
     final catColor =
         cat != null ? Color(cat.colorValue) : AppColors.primary;
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
+      // ── Không có floatingActionButton ──────────────────────────────────
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-          // ── Header ────────────────────────────────────────────
+          // ── Header ──────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             child: Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('CHECKLIST TẾT',
                         style: GoogleFonts.plusJakartaSans(
@@ -168,19 +159,18 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
           const SizedBox(height: 10),
 
-          // ── Date picker bar ───────────────────────────────────
+          // ── Date picker bar ──────────────────────────────────────────────
           GestureDetector(
             onTap: () => _pickDate(context, vm),
             child: Container(
-              margin: const EdgeInsets.symmetric(
-                  horizontal: 20),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppColors.primary.withOpacity(0.2)),
+                border:
+                    Border.all(color: AppColors.primary.withOpacity(0.2)),
                 boxShadow: [
                   BoxShadow(
                       color: Colors.black.withOpacity(0.04),
@@ -220,10 +210,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
           const SizedBox(height: 10),
 
-          // Progress bar
+          // ── Progress bar ─────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -233,9 +222,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     value: vm.totalProgress,
                     minHeight: 7,
                     backgroundColor: Colors.grey.shade200,
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(
-                            AppColors.primary),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.primary),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -252,14 +240,13 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
           const SizedBox(height: 12),
 
-          // ── Category tabs ─────────────────────────────────────
+          // ── Category tabs ────────────────────────────────────────────────
           if (vm.categories.isNotEmpty)
             SizedBox(
               height: 80,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemCount: vm.categories.length,
                 itemBuilder: (_, i) {
                   final c = vm.categories[i];
@@ -269,64 +256,45 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                   final total = vm.totalInCategory(c.id);
 
                   return GestureDetector(
-                    onTap: () =>
-                        setState(() => _selectedCat = i),
+                    onTap: () => setState(() => _selectedCat = i),
                     child: AnimatedContainer(
-                      duration: const Duration(
-                          milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       width: 82,
-                      margin: const EdgeInsets.only(
-                          right: 10),
+                      margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
-                        color: isActive
-                            ? cColor
-                            : Colors.white,
-                        borderRadius:
-                            BorderRadius.circular(16),
+                        color: isActive ? cColor : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                         border: isActive
                             ? null
-                            : Border.all(
-                                color:
-                                    Colors.grey.shade200),
+                            : Border.all(color: Colors.grey.shade200),
                         boxShadow: isActive
                             ? [
                                 BoxShadow(
-                                    color: cColor
-                                        .withOpacity(0.35),
+                                    color: cColor.withOpacity(0.35),
                                     blurRadius: 10,
-                                    offset:
-                                        const Offset(0, 4))
+                                    offset: const Offset(0, 4))
                               ]
                             : null,
                       ),
                       child: Column(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(c.icon,
-                              style: const TextStyle(
-                                  fontSize: 22)),
+                              style: const TextStyle(fontSize: 22)),
                           const SizedBox(height: 2),
                           Text(c.title,
-                              style: GoogleFonts
-                                  .plusJakartaSans(
-                                      fontSize: 10,
-                                      fontWeight:
-                                          FontWeight.w700,
-                                      color: isActive
-                                          ? Colors.white
-                                          : AppColors
-                                              .brownDeep)),
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: isActive
+                                      ? Colors.white
+                                      : AppColors.brownDeep)),
                           Text('$done/$total',
-                              style: GoogleFonts
-                                  .plusJakartaSans(
-                                      fontSize: 9,
-                                      color: isActive
-                                          ? Colors.white
-                                              .withOpacity(
-                                                  0.8)
-                                          : Colors.grey
-                                              .shade500)),
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  color: isActive
+                                      ? Colors.white.withOpacity(0.8)
+                                      : Colors.grey.shade500)),
                         ],
                       ),
                     ),
@@ -337,34 +305,44 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
           const SizedBox(height: 8),
 
-          // Tiêu đề category
+          // ── Tiêu đề category + nút thêm ─────────────────────────────────
           if (cat != null)
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('${cat.icon} ${cat.title}',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: AppColors.brownDeep)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: catColor.withOpacity(0.1),
-                      borderRadius:
-                          BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${vm.doneInCategory(cat.id)}/${vm.totalInCategory(cat.id)} xong',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: catColor),
+                  // Nút thêm — thay thế FAB
+                  GestureDetector(
+                    onTap: () => _showAddDialog(context, vm, cat),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: catColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: catColor.withOpacity(0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.add, color: Colors.white, size: 16),
+                        const SizedBox(width: 4),
+                        Text('Thêm',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ]),
                     ),
                   ),
                 ],
@@ -373,68 +351,51 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
           const SizedBox(height: 8),
 
-          // ── Items list ────────────────────────────────────────
+          // ── Items list ───────────────────────────────────────────────────
           Expanded(
             child: cat == null
                 ? const SizedBox()
                 : vm.itemsOfCategory(cat.id).isEmpty
                     ? _EmptyDay(
-                        onAdd: () => _showAddDialog(
-                            context, vm, cat),
+                        onAdd: () => _showAddDialog(context, vm, cat),
                         color: catColor,
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(
-                            20, 4, 20, 120),
-                        itemCount:
-                            vm.itemsOfCategory(cat.id).length,
+                        padding:
+                            const EdgeInsets.fromLTRB(20, 4, 20, 120),
+                        itemCount: vm.itemsOfCategory(cat.id).length,
                         itemBuilder: (_, i) {
-                          final item =
-                              vm.itemsOfCategory(cat.id)[i];
+                          final item = vm.itemsOfCategory(cat.id)[i];
                           return GestureDetector(
-                            onTap: () => vm.toggleItem(
-                                cat.id, item.id, !item.done),
+                            onTap: () =>
+                                vm.toggleItem(cat.id, item.id, !item.done),
                             child: AnimatedContainer(
-                              duration: const Duration(
-                                  milliseconds: 200),
-                              margin: const EdgeInsets.only(
-                                  bottom: 10),
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14),
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               decoration: BoxDecoration(
                                 color: item.done
-                                    ? catColor
-                                        .withOpacity(0.05)
+                                    ? catColor.withOpacity(0.05)
                                     : Colors.white,
-                                borderRadius:
-                                    BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                     color: item.done
-                                        ? catColor
-                                            .withOpacity(0.2)
-                                        : Colors
-                                            .grey.shade100),
+                                        ? catColor.withOpacity(0.2)
+                                        : Colors.grey.shade100),
                                 boxShadow: item.done
                                     ? null
                                     : [
                                         BoxShadow(
-                                            color: Colors
-                                                .black
-                                                .withOpacity(
-                                                    0.03),
+                                            color: Colors.black
+                                                .withOpacity(0.03),
                                             blurRadius: 8,
-                                            offset:
-                                                const Offset(
-                                                    0, 3))
+                                            offset: const Offset(0, 3))
                                       ],
                               ),
                               child: Row(children: [
-                                // Checkbox có tích
                                 AnimatedContainer(
-                                  duration: const Duration(
-                                      milliseconds: 200),
+                                  duration: const Duration(milliseconds: 200),
                                   width: 24,
                                   height: 24,
                                   decoration: BoxDecoration(
@@ -445,44 +406,37 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                                     border: Border.all(
                                       color: item.done
                                           ? catColor
-                                          : Colors
-                                              .grey.shade300,
+                                          : Colors.grey.shade300,
                                       width: 2,
                                     ),
                                   ),
                                   child: item.done
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 14)
+                                      ? const Icon(Icons.check,
+                                          color: Colors.white, size: 14)
                                       : null,
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Text(
                                     item.title,
-                                    style: GoogleFonts
-                                        .plusJakartaSans(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 14,
-                                      fontWeight:
-                                          FontWeight.w600,
+                                      fontWeight: FontWeight.w600,
                                       color: item.done
-                                          ? Colors
-                                              .grey.shade400
-                                          : AppColors
-                                              .brownDeep,
+                                          ? Colors.grey.shade400
+                                          : AppColors.brownDeep,
+                                      decoration: item.done
+                                          ? TextDecoration.lineThrough
+                                          : TextDecoration.none,
                                     ),
                                   ),
                                 ),
-                                // Nút xoá
                                 GestureDetector(
-                                  onTap: () => vm.deleteItem(
-                                      cat.id, item.id),
-                                  child: Icon(
-                                      Icons.close_rounded,
+                                  onTap: () =>
+                                      vm.deleteItem(cat.id, item.id),
+                                  child: Icon(Icons.close_rounded,
                                       size: 18,
-                                      color: Colors
-                                          .grey.shade400),
+                                      color: Colors.grey.shade400),
                                 ),
                               ]),
                             ),
@@ -492,22 +446,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           ),
         ]),
       ),
-      floatingActionButton: cat != null
-          ? FloatingActionButton(
-              onPressed: () =>
-                  _showAddDialog(context, vm, cat),
-              backgroundColor: catColor,
-              elevation: 6,
-              shape: const CircleBorder(),
-              child: const Icon(Icons.add,
-                  color: Colors.white, size: 26),
-            )
-          : null,
     );
   }
 }
 
-// ── Empty state cho ngày chưa có item ────────────────────────────────────────
+// ── Empty state ───────────────────────────────────────────────────────────────
 class _EmptyDay extends StatelessWidget {
   final VoidCallback onAdd;
   final Color color;
@@ -517,7 +460,7 @@ class _EmptyDay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('📋', style: const TextStyle(fontSize: 48)),
+        const Text('📋', style: TextStyle(fontSize: 48)),
         const SizedBox(height: 12),
         Text('Ngày này chưa có việc gì',
             style: GoogleFonts.plusJakartaSans(
@@ -533,16 +476,15 @@ class _EmptyDay extends StatelessWidget {
           onPressed: onAdd,
           style: ElevatedButton.styleFrom(
             backgroundColor: color,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 20, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
           ),
           icon: const Icon(Icons.add, color: Colors.white),
           label: Text('Thêm việc',
               style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700)),
+                  color: Colors.white, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -554,9 +496,7 @@ class _ProgressCircle extends StatelessWidget {
   final double progress;
   final int done, total;
   const _ProgressCircle(
-      {required this.progress,
-      required this.done,
-      required this.total});
+      {required this.progress, required this.done, required this.total});
 
   @override
   Widget build(BuildContext context) {
@@ -568,8 +508,8 @@ class _ProgressCircle extends StatelessWidget {
           value: progress,
           strokeWidth: 5,
           backgroundColor: Colors.grey.shade200,
-          valueColor: const AlwaysStoppedAnimation<Color>(
-              AppColors.primary),
+          valueColor:
+              const AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
         Column(mainAxisSize: MainAxisSize.min, children: [
           Text('$done',
@@ -579,8 +519,7 @@ class _ProgressCircle extends StatelessWidget {
                   color: AppColors.primary)),
           Text('/$total',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9,
-                  color: Colors.grey.shade500)),
+                  fontSize: 9, color: Colors.grey.shade500)),
         ]),
       ]),
     );

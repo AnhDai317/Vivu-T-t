@@ -26,8 +26,8 @@ class _DestinationsScreenState extends State<DestinationsScreen> {
   List<SpringDestination> get _filtered => _selectedCategory == 'all'
       ? SpringDestinationsData.all
       : SpringDestinationsData.all
-            .where((d) => d.category == _selectedCategory)
-            .toList();
+          .where((d) => d.category == _selectedCategory)
+          .toList();
 
   Future<void> _openMaps(SpringDestination dest) async {
     final q = Uri.encodeComponent(dest.name);
@@ -105,9 +105,7 @@ class _DestinationsScreenState extends State<DestinationsScreen> {
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -143,9 +141,7 @@ class _DestinationsScreenState extends State<DestinationsScreen> {
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
+                          horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
                         color: isActive ? AppColors.primary : Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -167,7 +163,9 @@ class _DestinationsScreenState extends State<DestinationsScreen> {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: isActive ? Colors.white : Colors.grey.shade600,
+                          color: isActive
+                              ? Colors.white
+                              : Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -199,6 +197,7 @@ class _DestinationsScreenState extends State<DestinationsScreen> {
   }
 }
 
+// ── Card địa điểm ──────────────────────────────────────────────────────────────
 class _DestCard extends StatelessWidget {
   final SpringDestination dest;
   final VoidCallback onDirections;
@@ -224,7 +223,6 @@ class _DestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -239,136 +237,129 @@ class _DestCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Emoji icon
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: _catColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(dest.emoji, style: const TextStyle(fontSize: 26)),
+          // ── Ảnh vuông bên trái ─────────────────────────────────────
+          ClipRRect(
+            borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(16)),
+            child: SizedBox(
+              width: 100,
+              height: 110,
+              child: _DestImage(dest: dest, catColor: _catColor),
             ),
           ),
 
-          const SizedBox(width: 12),
-
+          // ── Info bên phải ──────────────────────────────────────────
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        dest.name,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.brownDeep,
-                        ),
-                      ),
-                    ),
-                    if (dest.isHot)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
                         child: Text(
-                          '🔥 Hot',
+                          dest.name,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.red.shade400,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.brownDeep,
                           ),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 12,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      dest.location,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  dest.description,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                    height: 1.4,
+                      if (dest.isHot)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '🔥 Hot',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.red.shade400,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(Icons.star_rounded, size: 13, color: Colors.amber),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${dest.rating}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.amber.shade700,
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on,
+                          size: 12, color: Colors.grey.shade400),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          dest.location,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dest.description,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                      height: 1.4,
                     ),
-                    const SizedBox(width: 10),
-                    Icon(
-                      Icons.people_outline_rounded,
-                      size: 13,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${(dest.checkins / 1000).toStringAsFixed(1)}k check-in',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.star_rounded,
+                          size: 13, color: Colors.amber),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${dest.rating}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber.shade700,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Nút chỉ đường
-          GestureDetector(
-            onTap: onDirections,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.navigation_rounded,
-                color: Colors.white,
-                size: 20,
+                      const SizedBox(width: 10),
+                      Icon(Icons.people_outline_rounded,
+                          size: 13, color: Colors.grey.shade400),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${(dest.checkins / 1000).toStringAsFixed(1)}k',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                      const Spacer(),
+                      // Nút chỉ đường
+                      GestureDetector(
+                        onTap: onDirections,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.navigation_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -376,4 +367,30 @@ class _DestCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Widget ảnh dùng Image.asset ────────────────────────────────────────────────
+class _DestImage extends StatelessWidget {
+  final SpringDestination dest;
+  final Color catColor;
+  const _DestImage({required this.dest, required this.catColor});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dest.imagePath.isEmpty) return _fallback();
+    return Image.asset(
+      dest.imagePath,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (_, __, ___) => _fallback(),
+    );
+  }
+
+  Widget _fallback() => Container(
+        color: catColor.withOpacity(0.1),
+        child: Center(
+          child: Text(dest.emoji, style: const TextStyle(fontSize: 32)),
+        ),
+      );
 }

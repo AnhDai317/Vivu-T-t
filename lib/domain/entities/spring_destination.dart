@@ -2,7 +2,7 @@ class SpringDestination {
   final String id;
   final String name;
   final String location;
-  final String category; // 'flower', 'temple', 'festival', 'heritage'
+  final String category;
   final String emoji;
   final String description;
   final double rating;
@@ -10,6 +10,7 @@ class SpringDestination {
   final double lat;
   final double lng;
   final bool isHot;
+  final String imagePath; // ← đổi từ imageUrl
 
   const SpringDestination({
     required this.id,
@@ -23,5 +24,6 @@ class SpringDestination {
     required this.lat,
     required this.lng,
     this.isHot = false,
+    this.imagePath = '', // ← đổi
   });
 }

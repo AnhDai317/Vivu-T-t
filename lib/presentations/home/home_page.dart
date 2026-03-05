@@ -36,18 +36,20 @@ class _HomePageState extends State<HomePage> {
       final w = await WeatherApi().getCurrentWeather();
       if (mounted) setState(() => _weather = w);
     } catch (_) {
-      // Giữ null nếu lỗi, UI hiện placeholder
     } finally {
       if (mounted) setState(() => _weatherLoading = false);
     }
   }
 
-  // Đếm ngược đến Tết 2027 (29/1/2027)
   int _daysUntilTet() {
     final tet2027 = DateTime(2027, 1, 29);
     final now = DateTime.now();
     final diff = tet2027.difference(DateTime(now.year, now.month, now.day));
     return diff.inDays.clamp(0, 9999);
+  }
+
+  void _switchTab(BuildContext context, int index) {
+    context.findAncestorStateOfType<MainScreenState>()?.switchTab(index);
   }
 
   void _goToTripList(BuildContext context) {
@@ -105,7 +107,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── AppBar ────────────────────────────────────────
+                // ── AppBar ──────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
@@ -157,7 +159,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 16),
 
-                // ── Hero Banner (đếm ngược + thời tiết) ──────────
                 _HeroBanner(
                   daysLeft: _daysUntilTet(),
                   weather: _weather,
@@ -166,32 +167,38 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
-                // ── Menu 4 nút ────────────────────────────────────
+                // ── 4 nút menu ──────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _MenuBtn(
-                        emoji: '📔',
-                        label: 'Sổ tay',
+                        icon: Icons.menu_book_rounded,
+                        line1: 'Sổ tay',
+                        line2: 'Lịch trình',
+                        color: const Color(0xFFE53935),
                         onTap: () => _goToTripList(context),
                       ),
                       _MenuBtn(
-                        emoji: '✅',
-                        label: 'Checklist',
-                        // Tab index 2 = Checklist
+                        icon: Icons.checklist_rounded,
+                        line1: 'Checklist',
+                        line2: 'Hành trang',
+                        color: const Color(0xFF43A047),
                         onTap: () => _switchTab(context, 2),
                       ),
                       _MenuBtn(
-                        emoji: '🗺️',
-                        label: 'Bản đồ',
-                        // Tab index 1 = Map
+                        icon: Icons.map_rounded,
+                        line1: 'Bản đồ',
+                        line2: 'Du xuân',
+                        color: const Color(0xFF1E88E5),
                         onTap: () => _switchTab(context, 1),
                       ),
                       _MenuBtn(
-                        emoji: '📍',
-                        label: 'Gợi ý',
+                        icon: Icons.place_rounded,
+                        line1: 'Gợi ý',
+                        line2: 'Điểm đến',
+                        color: const Color(0xFF8E24AA),
                         onTap: () => _goToDestinations(context),
                       ),
                     ],
@@ -200,12 +207,10 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 28),
 
-                // ── Kế hoạch sắp tới ──────────────────────────────
                 _TripsSection(onViewAll: () => _goToTripList(context)),
 
                 const SizedBox(height: 28),
 
-                // ── Gợi ý điểm du xuân ────────────────────────────
                 _DestinationsSection(
                   onViewAll: () => _goToDestinations(context),
                   onOpenMaps: _openMaps,
@@ -217,16 +222,9 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  // Chuyển tab trong MainScreen
-  void _switchTab(BuildContext context, int index) {
-    context.findAncestorStateOfType<MainScreenState>()?.switchTab(index);
-  }
 }
 
-// Interface để MainScreen expose tab switch
-// (Xem hướng dẫn dưới về main_screen.dart)
-// ── Hero Banner ───────────────────────────────────────────────────────────────
+// ── Hero Banner ────────────────────────────────────────────────────────────────
 class _HeroBanner extends StatelessWidget {
   final int daysLeft;
   final Weather? weather;
@@ -255,100 +253,91 @@ class _HeroBanner extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Đếm ngược
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.celebration_rounded,
-                          color: Colors.white,
-                          size: 14,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.celebration_rounded, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'ĐẾM NGƯỢC TẾT 2027',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white.withOpacity(0.85),
+                          letterSpacing: 1,
                         ),
-                        const SizedBox(width: 4),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '$daysLeft',
+                          style: const TextStyle(color: Color(0xFFFFD54F)),
+                        ),
+                        const TextSpan(text: ' ngày'),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    'đến Tết Đinh Mùi',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Container(width: 1, height: 60, color: Colors.white.withOpacity(0.25)),
+            const SizedBox(width: 16),
+
+            // Thời tiết
+            SizedBox(
+              width: 100,
+              child: weatherLoading
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        ),
+                        const SizedBox(height: 6),
                         Text(
-                          'ĐẾM NGƯỢC TẾT 2027',
+                          'Đang tải...',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white.withOpacity(0.85),
-                            letterSpacing: 1,
+                            fontSize: 10,
+                            color: Colors.white.withOpacity(0.7),
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: '$daysLeft',
-                            style: const TextStyle(color: Color(0xFFFFD54F)),
-                          ),
-                          const TextSpan(text: ' ngày'),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      'đến Tết Đinh Mùi',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Divider
-                Container(
-                  width: 1,
-                  height: 50,
-                  color: Colors.white.withOpacity(0.2),
-                ),
-
-                // Thời tiết
-                SizedBox(
-                  width: 110,
-                  child: weatherLoading
+                    )
+                  : weather == null
                       ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Đang tải...',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                color: Colors.white.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        )
-                      : weather == null
-                      ? Column(
-                          children: [
-                            const Text('🌡️', style: TextStyle(fontSize: 24)),
+                            const Text('🌡️', style: TextStyle(fontSize: 26)),
                             Text(
                               'Không có\ndữ liệu',
-                              textAlign: TextAlign.center,
+                              textAlign: TextAlign.right,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 color: Colors.white.withOpacity(0.7),
@@ -362,11 +351,8 @@ class _HeroBanner extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
+                                const Icon(Icons.location_on,
+                                    color: Colors.white, size: 11),
                                 const SizedBox(width: 2),
                                 Text(
                                   'HÀ NỘI',
@@ -379,14 +365,12 @@ class _HeroBanner extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                Text(
-                                  weather!.icon,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
+                                Text(weather!.icon,
+                                    style: const TextStyle(fontSize: 20)),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${weather!.temperature.toStringAsFixed(0)}°C',
@@ -400,6 +384,7 @@ class _HeroBanner extends StatelessWidget {
                             ),
                             Text(
                               weather!.description,
+                              textAlign: TextAlign.right,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -408,8 +393,6 @@ class _HeroBanner extends StatelessWidget {
                             ),
                           ],
                         ),
-                ),
-              ],
             ),
           ],
         ),
@@ -418,14 +401,19 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ── Menu Button ───────────────────────────────────────────────────────────────
+// ── Menu Button — icon Material + 2 dòng label ────────────────────────────────
 class _MenuBtn extends StatelessWidget {
-  final String emoji;
-  final String label;
+  final IconData icon;
+  final String line1;
+  final String line2;
+  final Color color;
   final VoidCallback onTap;
+
   const _MenuBtn({
-    required this.emoji,
-    required this.label,
+    required this.icon,
+    required this.line1,
+    required this.line2,
+    required this.color,
     required this.onTap,
   });
 
@@ -436,30 +424,38 @@ class _MenuBtn extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  color: color.withOpacity(0.18),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
             child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 26)),
+              child: Icon(icon, color: color, size: 30),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 7),
           Text(
-            label,
+            line1,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: AppColors.brownDeep,
+            ),
+          ),
+          Text(
+            line2,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade500,
             ),
           ),
         ],
@@ -468,26 +464,21 @@ class _MenuBtn extends StatelessWidget {
   }
 }
 
-// ── Trips Section ─────────────────────────────────────────────────────────────
+// ── Trips Section ──────────────────────────────────────────────────────────────
 class _TripsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   const _TripsSection({required this.onViewAll});
 
-  String _formatDate(DateTime d) {
-    const w = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    return '${w[d.weekday % 7]}, ${d.day}/${d.month}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HomeViewModel>();
+
     final upcoming = vm.trips.where((t) => !t.isPast || t.isToday).toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
     final display = upcoming.take(2).toList();
 
     return Column(
       children: [
-        // Header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
@@ -534,10 +525,7 @@ class _TripsSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.grey.shade200,
-                    style: BorderStyle.solid,
-                  ),
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: Column(
                   children: [
@@ -563,40 +551,40 @@ class _TripsSection extends StatelessWidget {
               ),
             ),
           )
-        else
+        else ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: display.map((t) => _TripCard(trip: t)).toList(),
             ),
           ),
-
-        if (upcoming.length > 2) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: GestureDetector(
-              onTap: onViewAll,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.07),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-                ),
-                child: Text(
-                  'Xem thêm ${upcoming.length - 2} kế hoạch →',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+          if (upcoming.length > 2) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: onViewAll,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                  ),
+                  child: Text(
+                    'Xem thêm ${upcoming.length - 2} kế hoạch →',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ],
     );
@@ -606,11 +594,6 @@ class _TripsSection extends StatelessWidget {
 class _TripCard extends StatelessWidget {
   final Trip trip;
   const _TripCard({required this.trip});
-
-  String _fmt(DateTime d) {
-    const w = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    return '${w[d.weekday % 7]}, ${d.day}/${d.month}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -661,7 +644,7 @@ class _TripCard extends StatelessWidget {
                 ),
                 if (trip.activities.isNotEmpty)
                   Text(
-                    '${trip.activities.length} hoạt động • ${_fmt(trip.startDate)}',
+                    '${trip.activities.length} hoạt động • ${trip.startDate.day}/${trip.startDate.month}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       color: Colors.grey.shade500,
@@ -692,7 +675,7 @@ class _TripCard extends StatelessWidget {
   }
 }
 
-// ── Destinations Section ──────────────────────────────────────────────────────
+// ── Destinations Section ───────────────────────────────────────────────────────
 class _DestinationsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   final Function(SpringDestination) onOpenMaps;
@@ -739,7 +722,7 @@ class _DestinationsSection extends StatelessWidget {
         const SizedBox(height: 12),
 
         SizedBox(
-          height: 180,
+          height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -749,117 +732,116 @@ class _DestinationsSection extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onOpenMaps(dest),
                 child: Container(
-                  width: 150,
-                  margin: EdgeInsets.only(
-                    right: i < featured.length - 1 ? 12 : 0,
-                  ),
-                  padding: const EdgeInsets.all(12),
+                  width: 160,
+                  margin: EdgeInsets.only(right: i < featured.length - 1 ? 12 : 0),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade100),
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
+                        color: Colors.black.withOpacity(0.10),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Emoji + Hot badge
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            dest.emoji,
-                            style: const TextStyle(fontSize: 28),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // ── Ảnh từ assets ─────────────────────────────
+                        _DestImage(dest: dest),
+
+                        // ── Gradient overlay ──────────────────────────
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.68),
+                              ],
+                              stops: const [0.35, 1.0],
+                            ),
                           ),
-                          if (dest.isHot)
-                            Container(
+                        ),
+
+                        // ── Hot badge ─────────────────────────────────
+                        if (dest.isHot)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 2,
-                              ),
+                                  horizontal: 7, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(6),
+                                color: Colors.red.shade500,
+                                borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                '🔥',
-                                style: const TextStyle(fontSize: 10),
+                                '🔥 Hot',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        dest.name,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.brownDeep,
+                          ),
+
+                        // ── Info bên dưới ─────────────────────────────
+                        Positioned(
+                          left: 10,
+                          right: 10,
+                          bottom: 10,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                dest.name,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.star_rounded,
+                                      size: 11, color: Colors.amber),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    '${dest.rating}',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.25),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.navigation_rounded,
+                                      color: Colors.white,
+                                      size: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 10,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              dest.location,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                color: Colors.grey.shade500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.star_rounded,
-                            size: 11,
-                            color: Colors.amber,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${dest.rating}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.amber.shade700,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.navigation_rounded,
-                              color: Colors.white,
-                              size: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -869,4 +851,27 @@ class _DestinationsSection extends StatelessWidget {
       ],
     );
   }
+}
+
+// ── Widget ảnh dùng Image.asset, fallback về emoji nếu file chưa có ───────────
+class _DestImage extends StatelessWidget {
+  final SpringDestination dest;
+  const _DestImage({required this.dest});
+
+  @override
+  Widget build(BuildContext context) {
+    if (dest.imagePath.isEmpty) return _fallback();
+    return Image.asset(
+      dest.imagePath,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _fallback(),
+    );
+  }
+
+  Widget _fallback() => Container(
+        color: AppColors.primary.withOpacity(0.12),
+        child: Center(
+          child: Text(dest.emoji, style: const TextStyle(fontSize: 44)),
+        ),
+      );
 }

@@ -1,6 +1,0 @@
-# Test the VM by default.
-platforms: [ vm ]
-
-paths:
-  - test/unit
-
