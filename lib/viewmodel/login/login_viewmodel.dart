@@ -85,4 +85,20 @@ class LoginViewModel extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Đổi mật khẩu — được gọi từ ProfileScreen
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final userId = _session?.user.id;
+    if (userId == null) {
+      throw Exception('Chưa đăng nhập');
+    }
+    await _repository.changePassword(
+      userId: userId,
+      oldPassword: oldPassword,
+      newPassword: newPassword,
+    );
+  }
 }

@@ -1,11 +1,13 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
 
   static Database? _db;
+  static const _uuid = Uuid();
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -19,7 +21,7 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5, // bump version để chạy migration
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -33,22 +35,22 @@ class AppDatabase {
     // ── users ────────────────────────────────────────────────────
     await db.execute('''
       CREATE TABLE users (
-        id          TEXT PRIMARY KEY,
-        full_name   TEXT NOT NULL,
-        email       TEXT NOT NULL UNIQUE,
-        password    TEXT NOT NULL,
-        dob         TEXT,
-        created_at  TEXT NOT NULL
+        id            TEXT PRIMARY KEY,
+        full_name     TEXT NOT NULL,
+        email         TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        dob           TEXT,
+        created_at    TEXT NOT NULL
       )
     ''');
 
-    // ── sessions ─────────────────────────────────────────────────
+    // ── session (single-row, id = 1) ──────────────────────────────
     await db.execute('''
-      CREATE TABLE sessions (
-        id          TEXT PRIMARY KEY,
-        user_id     TEXT NOT NULL,
-        token       TEXT NOT NULL UNIQUE,
-        created_at  TEXT NOT NULL,
+      CREATE TABLE session (
+        id         INTEGER PRIMARY KEY,
+        user_id    TEXT NOT NULL,
+        token      TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
         FOREIGN KEY (user_id)
           REFERENCES users(id)
           ON DELETE CASCADE
@@ -136,7 +138,7 @@ class AppDatabase {
       ''');
     }
 
-    // v2 → v3: thêm checklist (chưa có item_date)
+    // v2 → v3: thêm checklist
     if (oldVersion < 3) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS checklist_categories (
@@ -164,14 +166,49 @@ class AppDatabase {
 
     // v3 → v4: thêm cột item_date vào checklist_items
     if (oldVersion < 4) {
-      // SQLite chỉ hỗ trợ ADD COLUMN, không DROP/MODIFY
       try {
-        await db.execute('''
-          ALTER TABLE checklist_items
-          ADD COLUMN item_date TEXT NOT NULL DEFAULT ''
-        ''');
+        await db.execute(
+          "ALTER TABLE checklist_items ADD COLUMN item_date TEXT NOT NULL DEFAULT ''",
+        );
+      } catch (_) {}
+    }
+
+    // v4 → v5: migrate schema users (password → password_hash) và
+    //          sessions (TEXT id) → session (INTEGER id)
+    if (oldVersion < 5) {
+      // Xóa bảng cũ nếu tồn tại rồi tạo lại đúng schema
+      // (dữ liệu dev, chấp nhận reset)
+      try {
+        await db.execute('DROP TABLE IF EXISTS sessions');
+      } catch (_) {}
+      try {
+        await db.execute('DROP TABLE IF EXISTS session');
+      } catch (_) {}
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS session (
+          id         INTEGER PRIMARY KEY,
+          user_id    TEXT NOT NULL,
+          token      TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id)
+            REFERENCES users(id)
+            ON DELETE CASCADE
+        )
+      ''');
+
+      // Nếu bảng users dùng cột `password` cũ, tạo lại
+      try {
+        // Thêm cột password_hash nếu chưa có
+        await db.execute(
+          'ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ""',
+        );
+        // Copy dữ liệu cũ sang
+        await db.execute(
+          'UPDATE users SET password_hash = password WHERE password_hash = ""',
+        );
       } catch (_) {
-        // Bỏ qua nếu cột đã tồn tại
+        // Cột đã tồn tại hoặc không cần migrate
       }
     }
   }
@@ -218,8 +255,10 @@ class AppDatabase {
       );
     }
     await batch.commit(noResult: true);
-    // Items giờ không seed sẵn — user tự thêm theo từng ngày
   }
+
+  /// Tạo UUID mới
+  String newId() => _uuid.v4();
 
   // ── Xoá DB (dùng khi debug) ──────────────────────────────────────
   Future<void> deleteDatabase() async {

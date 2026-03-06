@@ -52,17 +52,12 @@ class _HomePageState extends State<HomePage> {
     context.findAncestorStateOfType<MainScreenState>()?.switchTab(index);
   }
 
-  void _goToTripList(BuildContext context) {
-    final vm = context.read<HomeViewModel>();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: vm,
-          child: const TripListScreen(),
-        ),
-      ),
-    );
+  void _goToTripList(BuildContext context, {DateTime? selectDate}) {
+    // Lưu ngày muốn select vào HomeViewModel trước khi switch tab
+    if (selectDate != null) {
+      context.read<HomeViewModel>().setSelectedTripDate(selectDate);
+    }
+    context.findAncestorStateOfType<MainScreenState>()?.switchTab(0);
   }
 
   void _goToDestinations(BuildContext context) {
@@ -207,7 +202,10 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 28),
 
-                _TripsSection(onViewAll: () => _goToTripList(context)),
+                _TripsSection(
+                  onViewAll: () => _goToTripList(context),
+                  onTapCard: (date) => _goToTripList(context, selectDate: date),
+                ),
 
                 const SizedBox(height: 28),
 
@@ -467,15 +465,19 @@ class _MenuBtn extends StatelessWidget {
 // ── Trips Section ──────────────────────────────────────────────────────────────
 class _TripsSection extends StatelessWidget {
   final VoidCallback onViewAll;
-  const _TripsSection({required this.onViewAll});
+  final ValueChanged<DateTime> onTapCard;
+  const _TripsSection({required this.onViewAll, required this.onTapCard});
 
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HomeViewModel>();
 
+    // Lấy trips sắp tới, sắp xếp theo ngày
     final upcoming = vm.trips.where((t) => !t.isPast || t.isToday).toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
-    final display = upcoming.take(2).toList();
+
+    // Lấy tối đa 2 ngày gần nhất để hiện
+    final displayDays = upcoming.take(2).toList();
 
     return Column(
       children: [
@@ -555,7 +557,12 @@ class _TripsSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
-              children: display.map((t) => _TripCard(trip: t)).toList(),
+              children: displayDays
+                  .map((t) => _TripCard(
+                        trip: t,
+                        onTap: () => onTapCard(t.startDate),
+                      ))
+                  .toList(),
             ),
           ),
           if (upcoming.length > 2) ...[
@@ -570,10 +577,11 @@ class _TripsSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.07),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                    border: Border.all(
+                        color: AppColors.primary.withOpacity(0.2)),
                   ),
                   child: Text(
-                    'Xem thêm ${upcoming.length - 2} kế hoạch →',
+                    'Xem thêm ${upcoming.length - 2} ngày →',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
@@ -593,89 +601,176 @@ class _TripsSection extends StatelessWidget {
 
 class _TripCard extends StatelessWidget {
   final Trip trip;
-  const _TripCard({required this.trip});
+  final VoidCallback onTap;
+  const _TripCard({required this.trip, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+    final previewActs = trip.activities.take(2).toList();
+    final extraCount = trip.activities.length - 2;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-            child: Text(
-              trip.shortDateLabel,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trip.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.brownDeep,
-                  ),
-                ),
-                if (trip.activities.isNotEmpty)
-                  Text(
-                    '${trip.activities.length} hoạt động • ${trip.startDate.day}/${trip.startDate.month}',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
+          ],
+        ),
+        child: Column(
+          children: [
+            // ── Header ngày ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      trip.shortDateLabel,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
-              ],
-            ),
-          ),
-          if (trip.isToday)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      trip.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.brownDeep,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (trip.isToday)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'HÔM NAY',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              child: Text(
-                'HÔM NAY',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+            ),
+
+            // ── Activities preview ────────────────────────────────────────
+            if (trip.activities.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.event_busy_rounded,
+                        size: 14, color: Colors.grey.shade400),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Chưa có hoạt động',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, color: Colors.grey.shade400),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-        ],
+              )
+            else ...[
+              Divider(height: 1, color: Colors.grey.shade100),
+              ...previewActs.map((act) => Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            act.title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.brownDeep,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (act.location.isNotEmpty) ...[
+                          Icon(Icons.location_on,
+                              size: 11, color: Colors.grey.shade400),
+                          const SizedBox(width: 2),
+                          Flexible(
+                            child: Text(
+                              act.location,
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  color: Colors.grey.shade500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )),
+              if (extraCount > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+                  child: Text(
+                    '+$extraCount hoạt động nữa...',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
-
-// ── Destinations Section ───────────────────────────────────────────────────────
 class _DestinationsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   final Function(SpringDestination) onOpenMaps;

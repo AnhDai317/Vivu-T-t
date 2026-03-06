@@ -1,17 +1,19 @@
 // Data Layer
 import 'package:vivu_tet/data/implementations/api/auth_api.dart';
 import 'package:vivu_tet/data/implementations/local/app_database.dart';
+// AuthMapper nằm trong mapper/, AuthRepository nằm trong repositories/
 import 'package:vivu_tet/data/implementations/mapper/auth_mapper.dart';
 import 'package:vivu_tet/data/implementations/repositories/auth_repository.dart';
+import 'package:vivu_tet/data/implementations/repositories/checklist_repository.dart';
 import 'package:vivu_tet/data/implementations/repositories/trip_repository.dart';
-import 'package:vivu_tet/data/implementations/repositories/checklist_repository.dart'; // Thêm mới
 // ViewModel Layer
+import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/login/login_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/logout/logout_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/planner/create_trip_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/register/register_viewmodel.dart';
-import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart'; // Thêm mới
+
 // Helper để tránh lặp lại code cho AuthRepository
 AuthRepository _getAuthRepo() {
   final api = AuthApi(AppDatabase.instance);
@@ -34,6 +36,5 @@ HomeViewModel buildHome() =>
 
 ChecklistViewModel buildChecklist() {
   final repo = ChecklistRepository(AppDatabase.instance);
-  // Trả về instance và gọi load data ngay lập tức
   return ChecklistViewModel(repo)..loadCategories();
 }

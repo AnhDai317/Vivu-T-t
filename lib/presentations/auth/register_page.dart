@@ -115,11 +115,30 @@ class _RegisterPageState extends State<RegisterPage> {
                       color: AppColors.brownMid,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
 
-                  // Họ và tên
+                  // Ghi chú trường bắt buộc
+                  Row(
+                    children: [
+                      const Text(' *  ',
+                          style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13)),
+                      Text(
+                        'là trường bắt buộc',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Họ và tên * ─────────────────────────────────────────
+                  _RequiredLabel('Họ và tên'),
+                  const SizedBox(height: 6),
                   ViVuTextField(
-                    label: 'Họ và tên',
+                    label: '',
                     hint: 'Ví dụ: Nguyễn Văn An',
                     prefixIcon: Icons.badge_outlined,
                     controller: _nameCtrl,
@@ -131,16 +150,20 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Ngày sinh
+                  // ── Ngày sinh * ──────────────────────────────────────────
+                  _RequiredLabel('Ngày sinh'),
+                  const SizedBox(height: 6),
                   DobPicker(
                     selectedDate: vm.selectedDob,
                     onDateChanged: vm.setDob,
                   ),
                   const SizedBox(height: 16),
 
-                  // Email
+                  // ── Email * ──────────────────────────────────────────────
+                  _RequiredLabel('Email'),
+                  const SizedBox(height: 6),
                   ViVuTextField(
-                    label: 'Email',
+                    label: '',
                     hint: 'Nhập địa chỉ email',
                     prefixIcon: Icons.email_outlined,
                     controller: _emailCtrl,
@@ -158,9 +181,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Mật khẩu
+                  // ── Mật khẩu * ──────────────────────────────────────────
+                  _RequiredLabel('Mật khẩu'),
+                  const SizedBox(height: 6),
                   ViVuTextField(
-                    label: 'Mật khẩu',
+                    label: '',
                     hint: 'Tạo mật khẩu bảo mật (≥ 6 ký tự)',
                     prefixIcon: Icons.lock_outline_rounded,
                     controller: _passCtrl,
@@ -177,14 +202,17 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       onPressed: vm.togglePasswordVisibility,
                     ),
-                    validator: (v) =>
-                        (v?.isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
+                    validator: (v) => (v?.isEmpty ?? true)
+                        ? 'Vui lòng nhập mật khẩu'
+                        : null,
                   ),
                   const SizedBox(height: 16),
 
-                  // Xác nhận mật khẩu
+                  // ── Xác nhận mật khẩu * ─────────────────────────────────
+                  _RequiredLabel('Xác nhận mật khẩu'),
+                  const SizedBox(height: 6),
                   ViVuTextField(
-                    label: 'Xác nhận mật khẩu',
+                    label: '',
                     hint: 'Nhập lại mật khẩu',
                     prefixIcon: Icons.lock_outline_rounded,
                     controller: _confirmCtrl,
@@ -208,7 +236,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Điều khoản
+                  // ── Điều khoản ───────────────────────────────────────────
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -303,6 +331,34 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Label có dấu * đỏ ────────────────────────────────────────────────────────
+class _RequiredLabel extends StatelessWidget {
+  final String text;
+  const _RequiredLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppColors.brownDeep,
+        ),
+        children: const [
+          // dấu * đỏ ở trước label cho dễ thấy
+          TextSpan(
+            text: '* ',
+            style: TextStyle(
+                color: Colors.red, fontWeight: FontWeight.w800),
+          ),
+        ],
+        // text động
+      )..children!.add(TextSpan(text: text)),
     );
   }
 }

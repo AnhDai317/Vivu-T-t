@@ -14,8 +14,8 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 4 tab: Lịch trình | Bản đồ | (FAB) | Checklist | Cá nhân
-    // FAB nằm giữa nên BottomAppBar có notch
+    // 4 tab thường + FAB ở giữa: Lịch trình | Bản đồ | (FAB) | Checklist | Cá nhân
+    // 2 tab đặc biệt (Thử Vận May, Cầu May) mở màn hình riêng — không đổi index
     const tabs = [
       _TabItem(
         icon: Icons.calendar_today_outlined,
@@ -39,28 +39,122 @@ class CustomBottomNav extends StatelessWidget {
       ),
     ];
 
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      color: Colors.white,
-      elevation: 12,
-      shadowColor: Colors.black26,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // 2 tab bên trái
-            _buildTab(tabs[0], 0),
-            _buildTab(tabs[1], 1),
-            // Khoảng trống cho FAB
-            const SizedBox(width: 56),
-            // 2 tab bên phải
-            _buildTab(tabs[2], 2),
-            _buildTab(tabs[3], 3),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Thanh tính năng đặc biệt ──────────────────────────────────────
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+          child: Row(
+            children: [
+              // Thử Vận May
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(10), // index 10 = mở TaiXiuScreen
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2D1200), Color(0xFF1A0A00)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('🎲', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Thử Vận May',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFFD700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              // Cầu May
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(11), // index 11 = mở CauMayScreen
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3D1500), Color(0xFF0D0500)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF6B00).withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('🙏', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Cầu May',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFF9500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+
+        // ── Bottom nav chính ──────────────────────────────────────────────
+        BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8,
+          color: Colors.white,
+          elevation: 12,
+          shadowColor: Colors.black26,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildTab(tabs[0], 0),
+                _buildTab(tabs[1], 1),
+                const SizedBox(width: 56), // khoảng trống cho FAB
+                _buildTab(tabs[2], 2),
+                _buildTab(tabs[3], 3),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

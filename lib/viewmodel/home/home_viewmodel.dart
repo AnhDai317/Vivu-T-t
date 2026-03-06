@@ -15,6 +15,19 @@ class HomeViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  // Ngày được chọn từ Home để TripListScreen auto-select
+  DateTime? _selectedTripDate;
+  DateTime? get selectedTripDate => _selectedTripDate;
+
+  void setSelectedTripDate(DateTime date) {
+    _selectedTripDate = date;
+    // Không cần notifyListeners vì chỉ đọc 1 lần rồi clear
+  }
+
+  void clearSelectedTripDate() {
+    _selectedTripDate = null;
+  }
+
   Future<void> loadTrips() async {
     _isLoading = true;
     _error = null;

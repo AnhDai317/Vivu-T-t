@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:vivu_tet/di.dart';
 import 'package:vivu_tet/presentations/checklist/checklist_screen.dart';
 import 'package:vivu_tet/presentations/home/home_page.dart';
+import 'package:vivu_tet/presentations/lucky/cau_may_screen.dart';
+import 'package:vivu_tet/presentations/lucky/tai_xiu_screen.dart';
 import 'package:vivu_tet/presentations/map/map_screen.dart';
 import 'package:vivu_tet/presentations/planner/create_trip_screen.dart';
 import 'package:vivu_tet/presentations/profile/profile_screen.dart';
@@ -26,6 +28,27 @@ class MainScreenState extends State<MainScreen> {
 
   // Expose để HomePage gọi switch tab
   void switchTab(int index) => setState(() => _selectedIndex = index);
+
+  void _handleNavTap(int index) {
+    // index 10 → Thử Vận May (TaiXiu)
+    if (index == 10) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TaiXiuScreen()),
+      );
+      return;
+    }
+    // index 11 → Cầu May (thắp hương)
+    if (index == 11) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CauMayScreen()),
+      );
+      return;
+    }
+    // Các tab bình thường 0–3
+    setState(() => _selectedIndex = index);
+  }
 
   @override
   void dispose() {
@@ -75,7 +98,7 @@ class MainScreenState extends State<MainScreen> {
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: CustomBottomNav(
           currentIndex: _selectedIndex,
-          onTap: (i) => setState(() => _selectedIndex = i),
+          onTap: _handleNavTap,
         ),
       ),
     );

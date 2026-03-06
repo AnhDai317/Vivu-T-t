@@ -38,7 +38,7 @@ class AuthApi implements IauthApi {
     }
 
     // 2. Tạo token và lưu session
-    final userId = userRow['id'] as int;
+    final userId = userRow['id'].toString();
     final token = 'vivu_${DateTime.now().microsecondsSinceEpoch}';
     final now = DateTime.now().toIso8601String();
 
@@ -59,11 +59,16 @@ class AuthApi implements IauthApi {
     final db = await database.database;
 
     try {
+      final newId = database.newId(); // UUID
+      final now = DateTime.now().toIso8601String();
+
       await db.insert('users', {
+        'id': newId,
         'full_name': req.fullName.trim(),
         'email': req.email.trim().toLowerCase(),
         'password_hash': PasswordHasher.sha256Hash(req.passWord),
         'dob': req.dob,
+        'created_at': now,
       });
       return true;
     } catch (_) {
@@ -81,7 +86,7 @@ class AuthApi implements IauthApi {
     if (sessionRows.isEmpty) return null;
 
     final sessionRow = sessionRows.first;
-    final userId = sessionRow['user_id'] as int;
+    final userId = sessionRow['user_id'].toString();
     final token = (sessionRow['token'] ?? '').toString();
 
     final userRows = await db.query(
@@ -101,5 +106,38 @@ class AuthApi implements IauthApi {
   Future<void> logout() async {
     final db = await database.database;
     await db.delete('session');
+  }
+
+  // ── CHANGE PASSWORD ──────────────────────────────────────────────────────
+  @override
+  Future<void> changePassword({
+    required String userId,
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final db = await database.database;
+
+    final rows = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw Exception('Người dùng không tồn tại');
+
+    final storedHash = (rows.first['password_hash'] ?? '').toString();
+    final oldHash = PasswordHasher.sha256Hash(oldPassword);
+
+    if (storedHash != oldHash) {
+      throw Exception('Mật khẩu hiện tại không đúng');
+    }
+
+    final newHash = PasswordHasher.sha256Hash(newPassword);
+    await db.update(
+      'users',
+      {'password_hash': newHash},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
   }
 }

@@ -7,4 +7,9 @@ abstract class IauthApi {
   Future<bool> register(RegisterRequestDto req);
   Future<LoginResponseDto?> getCurrentSession();
   Future<void> logout();
+  Future<void> changePassword({
+    required String userId,
+    required String oldPassword,
+    required String newPassword,
+  });
 }
