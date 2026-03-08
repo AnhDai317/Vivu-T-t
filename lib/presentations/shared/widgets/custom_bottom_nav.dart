@@ -14,8 +14,8 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 4 tab thường + FAB ở giữa: Lịch trình | Bản đồ | (FAB) | Checklist | Cá nhân
-    // 2 tab đặc biệt (Thử Vận May, Cầu May) mở màn hình riêng — không đổi index
+    // FIX: Thay Bản đồ + Checklist → Thử Vận May + Cầu May
+    // 4 tab: Lịch trình | Thử Vận May | (FAB) | Cầu May | Cá nhân
     const tabs = [
       _TabItem(
         icon: Icons.calendar_today_outlined,
@@ -23,14 +23,14 @@ class CustomBottomNav extends StatelessWidget {
         label: 'Lịch trình',
       ),
       _TabItem(
-        icon: Icons.map_outlined,
-        activeIcon: Icons.map_rounded,
-        label: 'Bản đồ',
+        icon: Icons.casino_outlined,
+        activeIcon: Icons.casino_rounded,
+        label: 'Vận May',
       ),
       _TabItem(
-        icon: Icons.checklist_outlined,
-        activeIcon: Icons.checklist_rounded,
-        label: 'Checklist',
+        icon: Icons.local_fire_department_outlined,
+        activeIcon: Icons.local_fire_department_rounded,
+        label: 'Cầu May',
       ),
       _TabItem(
         icon: Icons.person_outline_rounded,
@@ -39,122 +39,25 @@ class CustomBottomNav extends StatelessWidget {
       ),
     ];
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // ── Thanh tính năng đặc biệt ──────────────────────────────────────
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-          child: Row(
-            children: [
-              // Thử Vận May
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onTap(10), // index 10 = mở TaiXiuScreen
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2D1200), Color(0xFF1A0A00)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD700).withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('🎲', style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Thử Vận May',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFFD700),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 10),
-
-              // Cầu May
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onTap(11), // index 11 = mở CauMayScreen
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3D1500), Color(0xFF0D0500)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF6B00).withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('🙏', style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Cầu May',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFF9500),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8,
+      color: Colors.white,
+      elevation: 12,
+      shadowColor: Colors.black26,
+      child: SizedBox(
+        height: 60,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildTab(tabs[0], 0),
+            _buildTab(tabs[1], 1),
+            const SizedBox(width: 56), // khoảng trống cho FAB
+            _buildTab(tabs[2], 2),
+            _buildTab(tabs[3], 3),
+          ],
         ),
-
-        // ── Bottom nav chính ──────────────────────────────────────────────
-        BottomAppBar(
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 8,
-          color: Colors.white,
-          elevation: 12,
-          shadowColor: Colors.black26,
-          child: SizedBox(
-            height: 60,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildTab(tabs[0], 0),
-                _buildTab(tabs[1], 1),
-                const SizedBox(width: 56), // khoảng trống cho FAB
-                _buildTab(tabs[2], 2),
-                _buildTab(tabs[3], 3),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 

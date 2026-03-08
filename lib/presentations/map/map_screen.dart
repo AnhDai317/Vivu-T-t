@@ -267,25 +267,54 @@ class _MapScreenState extends State<MapScreen>
             // ── Header ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-              child: Column(
+              child: Row(
                 children: [
-                  Text(
-                    'DU XUÂN PLANNER',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: 2,
+                  // Nút Back
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 18,
+                        color: AppColors.brownDeep,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Bản đồ Du Xuân',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.brownDeep,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'DU XUÂN PLANNER',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Bản đồ Du Xuân',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.brownDeep,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

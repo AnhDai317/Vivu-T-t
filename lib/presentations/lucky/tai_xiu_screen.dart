@@ -33,7 +33,6 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
   late AnimationController _resultCtrl;
   late AnimationController _particleCtrl;
   late List<AnimationController> _diceCtrl;
-  late List<Animation<double>> _diceAnim;
 
   // Lịch sử
   final List<Map<String, dynamic>> _history = [];
@@ -64,22 +63,20 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
         duration: Duration(milliseconds: 600 + i * 150),
       ),
     );
-    _diceAnim = _diceCtrl
-        .map(
-          (c) => Tween<double>(
-            begin: 0,
-            end: 1,
-          ).animate(CurvedAnimation(parent: c, curve: Curves.elasticOut)),
-        )
-        .toList();
   }
 
   @override
   void dispose() {
+    _shakeCtrl.stop();
+    _resultCtrl.stop();
+    _particleCtrl.stop();
+    for (final c in _diceCtrl) {
+      c.stop();
+      c.dispose();
+    }
     _shakeCtrl.dispose();
     _resultCtrl.dispose();
     _particleCtrl.dispose();
-    for (final c in _diceCtrl) c.dispose();
     super.dispose();
   }
 
@@ -96,7 +93,8 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          margin: const EdgeInsets.all(16),
+          // Đẩy thanh thông báo lên cao để không đụng vào FAB
+          margin: const EdgeInsets.only(bottom: 100, left: 16, right: 16),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -106,12 +104,11 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
     HapticFeedback.mediumImpact();
     setState(() => _gameState = _GameState.rolling);
 
-    // Animate shake
     _shakeCtrl.forward(from: 0);
 
-    // Random values while rolling
     await Future.delayed(const Duration(milliseconds: 200));
     for (int i = 0; i < 8; i++) {
+      if (!mounted) return;
       await Future.delayed(const Duration(milliseconds: 80));
       if (mounted) {
         setState(() {
@@ -120,12 +117,10 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
       }
     }
 
-    // Final result
     final rng = Random();
     final finalValues = List.generate(3, (_) => rng.nextInt(6) + 1);
     if (mounted) setState(() => _diceValues = finalValues);
 
-    // Show result
     await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) {
       setState(() => _gameState = _GameState.result);
@@ -140,7 +135,6 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
         HapticFeedback.lightImpact();
       }
 
-      // Lưu lịch sử
       _history.insert(0, {
         'dice': List<int>.from(finalValues),
         'total': _total,
@@ -174,22 +168,28 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
+                  // Tự động ẩn nút Back nếu là Tab
+                  Navigator.canPop(context)
+                      ? GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        )
+                      : const SizedBox(
+                          width: 40,
+                        ), // Giữ chỗ để tiêu đề luôn nằm giữa
+
                   const Spacer(),
                   Text(
                     '🎲 Thử Vận May',
@@ -200,6 +200,7 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
                     ),
                   ),
                   const Spacer(),
+
                   // Thống kê
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -246,11 +247,8 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        gradient: RadialGradient(
-                          colors: [
-                            const Color(0xFF2D1200),
-                            const Color(0xFF1A0A00),
-                          ],
+                        gradient: const RadialGradient(
+                          colors: [Color(0xFF2D1200), Color(0xFF1A0A00)],
                           radius: 1.2,
                         ),
                         borderRadius: BorderRadius.circular(28),
@@ -508,9 +506,9 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
+                                    const Text(
                                       '🎲',
-                                      style: const TextStyle(fontSize: 22),
+                                      style: TextStyle(fontSize: 22),
                                     ),
                                     const SizedBox(width: 10),
                                     Text(
@@ -562,7 +560,6 @@ class _TaiXiuScreenState extends State<TaiXiuScreen>
   }
 }
 
-// ── Choice Button ─────────────────────────────────────────────────────────────
 class _ChoiceBtn extends StatelessWidget {
   final String label;
   final String subtitle;
@@ -645,7 +642,6 @@ class _ChoiceBtn extends StatelessWidget {
   }
 }
 
-// ── Dice Widget ───────────────────────────────────────────────────────────────
 class _DiceWidget extends StatelessWidget {
   final int value;
   final bool isRolling;
@@ -730,7 +726,6 @@ class _DicePainter extends CustomPainter {
   bool shouldRepaint(_DicePainter old) => old.dots != dots;
 }
 
-// ── History Row ───────────────────────────────────────────────────────────────
 class _HistoryRow extends StatelessWidget {
   final Map<String, dynamic> data;
   const _HistoryRow({required this.data});
@@ -752,7 +747,6 @@ class _HistoryRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Xúc xắc nhỏ
           Row(
             children: dice
                 .map(

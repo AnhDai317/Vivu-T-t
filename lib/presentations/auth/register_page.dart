@@ -84,61 +84,42 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Toggle
                   AuthToggle(
                     isLogin: false,
                     onToggle: (isLogin) {
                       if (isLogin) Navigator.pop(context);
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
                   Text(
                     'Tham gia cùng chúng tôi 🌸',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppColors.brownDeep,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     'Điền thông tin bên dưới để bắt đầu hành trình du xuân.',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: AppColors.brownMid,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
-                  // Ghi chú trường bắt buộc
-                  Row(
-                    children: [
-                      const Text(' *  ',
-                          style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13)),
-                      Text(
-                        'là trường bắt buộc',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11, color: Colors.grey.shade500),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ── Họ và tên * ─────────────────────────────────────────
-                  _RequiredLabel('Họ và tên'),
+                  // ── Họ và tên ───────────────────────────────────────────
+                  const _RequiredLabel('Họ và tên'),
                   const SizedBox(height: 6),
                   ViVuTextField(
-                    label: '',
                     hint: 'Ví dụ: Nguyễn Văn An',
                     prefixIcon: Icons.badge_outlined,
                     controller: _nameCtrl,
@@ -150,8 +131,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Ngày sinh * ──────────────────────────────────────────
-                  _RequiredLabel('Ngày sinh'),
+                  // ── Ngày sinh (DobPicker đã có label bên trong) ──────────
+                  const _RequiredLabel('Ngày sinh'),
                   const SizedBox(height: 6),
                   DobPicker(
                     selectedDate: vm.selectedDob,
@@ -159,11 +140,10 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Email * ──────────────────────────────────────────────
-                  _RequiredLabel('Email'),
+                  // ── Email ────────────────────────────────────────────────
+                  const _RequiredLabel('Email'),
                   const SizedBox(height: 6),
                   ViVuTextField(
-                    label: '',
                     hint: 'Nhập địa chỉ email',
                     prefixIcon: Icons.email_outlined,
                     controller: _emailCtrl,
@@ -171,8 +151,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     textInputAction: TextInputAction.next,
                     onChanged: (_) => vm.clearError(),
                     validator: (v) {
-                      if (v?.trim().isEmpty ?? true)
+                      if (v?.trim().isEmpty ?? true) {
                         return 'Vui lòng nhập email';
+                      }
                       if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v!)) {
                         return 'Email không hợp lệ';
                       }
@@ -181,11 +162,10 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Mật khẩu * ──────────────────────────────────────────
-                  _RequiredLabel('Mật khẩu'),
+                  // ── Mật khẩu ────────────────────────────────────────────
+                  const _RequiredLabel('Mật khẩu'),
                   const SizedBox(height: 6),
                   ViVuTextField(
-                    label: '',
                     hint: 'Tạo mật khẩu bảo mật (≥ 6 ký tự)',
                     prefixIcon: Icons.lock_outline_rounded,
                     controller: _passCtrl,
@@ -202,17 +182,15 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       onPressed: vm.togglePasswordVisibility,
                     ),
-                    validator: (v) => (v?.isEmpty ?? true)
-                        ? 'Vui lòng nhập mật khẩu'
-                        : null,
+                    validator: (v) =>
+                        (v?.isEmpty ?? true) ? 'Vui lòng nhập mật khẩu' : null,
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Xác nhận mật khẩu * ─────────────────────────────────
-                  _RequiredLabel('Xác nhận mật khẩu'),
+                  // ── Xác nhận mật khẩu ───────────────────────────────────
+                  const _RequiredLabel('Xác nhận mật khẩu'),
                   const SizedBox(height: 6),
                   ViVuTextField(
-                    label: '',
                     hint: 'Nhập lại mật khẩu',
                     prefixIcon: Icons.lock_outline_rounded,
                     controller: _confirmCtrl,
@@ -238,68 +216,68 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   // ── Điều khoản ───────────────────────────────────────────
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Checkbox(
-                        value: vm.agreeToTerms,
-                        activeColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          value: vm.agreeToTerms,
+                          activeColor: AppColors.primary,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          onChanged: vm.toggleAgreeToTerms,
                         ),
-                        onChanged: vm.toggleAgreeToTerms,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                color: AppColors.brownMid,
-                              ),
-                              children: const [
-                                TextSpan(text: 'Tôi đồng ý với '),
-                                TextSpan(
-                                  text: 'Điều khoản sử dụng',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                TextSpan(text: ' và '),
-                                TextSpan(
-                                  text: 'Chính sách bảo mật',
-                                  style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
+                        child: RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: AppColors.brownMid,
                             ),
+                            children: const [
+                              TextSpan(text: 'Tôi đồng ý với '),
+                              TextSpan(
+                                text: 'Điều khoản sử dụng',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              TextSpan(text: ' và '),
+                              TextSpan(
+                                text: 'Chính sách bảo mật',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ],
                   ),
 
-                  // Error
                   if (vm.error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     ErrorBanner(message: vm.error!),
                   ],
 
                   const SizedBox(height: 24),
 
-                  // Nút tạo tài khoản
                   ViVuButton(
                     label: 'TẠO TÀI KHOẢN',
                     isLoading: vm.loading,
                     onPressed: () => _handleRegister(vm),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Link về Login
                   Center(
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context),
@@ -335,7 +313,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
-// ── Label có dấu * đỏ ────────────────────────────────────────────────────────
 class _RequiredLabel extends StatelessWidget {
   final String text;
   const _RequiredLabel(this.text);
@@ -349,16 +326,14 @@ class _RequiredLabel extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: AppColors.brownDeep,
         ),
-        children: const [
-          // dấu * đỏ ở trước label cho dễ thấy
-          TextSpan(
+        children: [
+          const TextSpan(
             text: '* ',
-            style: TextStyle(
-                color: Colors.red, fontWeight: FontWeight.w800),
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w800),
           ),
+          TextSpan(text: text),
         ],
-        // text động
-      )..children!.add(TextSpan(text: text)),
+      ),
     );
   }
 }

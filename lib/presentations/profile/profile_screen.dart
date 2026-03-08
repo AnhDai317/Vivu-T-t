@@ -98,7 +98,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Đổi mật khẩu
                     _SettingRow(
                       icon: Icons.lock_outline_rounded,
                       iconColor: const Color(0xFF1E88E5),
@@ -108,11 +107,9 @@ class ProfileScreen extends StatelessWidget {
                         size: 14,
                         color: Colors.grey,
                       ),
-                      onTap: () =>
-                          _showChangePasswordSheet(context, loginVm),
+                      onTap: () => _showChangePasswordSheet(context, loginVm),
                     ),
                     Divider(height: 1, color: Colors.grey.shade100),
-                    // Phiên bản
                     _SettingRow(
                       icon: Icons.info_outline_rounded,
                       iconColor: const Color(0xFF8E24AA),
@@ -166,222 +163,21 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ── Bottom sheet đổi mật khẩu ────────────────────────────────────────────
+  // FIX: Dùng StatefulWidget riêng để quản lý state đúng cách
   void _showChangePasswordSheet(
       BuildContext context, LoginViewModel loginVm) {
-    final oldCtrl = TextEditingController();
-    final newCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) {
-          bool obscureOld = true;
-          bool obscureNew = true;
-          bool obscureConfirm = true;
-          bool isLoading = false;
-
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 16,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
-            ),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2)),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Text(
-                    'Đổi mật khẩu',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.brownDeep,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Mật khẩu hiện tại
-                  StatefulBuilder(
-                    builder: (_, setOld) => TextFormField(
-                      controller: oldCtrl,
-                      obscureText: obscureOld,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                      decoration: _inputDeco(
-                        label: 'Mật khẩu hiện tại',
-                        suffix: IconButton(
-                          icon: Icon(
-                            obscureOld
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () =>
-                              setOld(() => obscureOld = !obscureOld),
-                        ),
-                      ),
-                      validator: (v) => v == null || v.isEmpty
-                          ? 'Vui lòng nhập mật khẩu cũ'
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Mật khẩu mới
-                  StatefulBuilder(
-                    builder: (_, setNew) => TextFormField(
-                      controller: newCtrl,
-                      obscureText: obscureNew,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                      decoration: _inputDeco(
-                        label: 'Mật khẩu mới',
-                        suffix: IconButton(
-                          icon: Icon(
-                            obscureNew
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () =>
-                              setNew(() => obscureNew = !obscureNew),
-                        ),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return 'Vui lòng nhập mật khẩu mới';
-                        }
-                        if (v.length < 6) {
-                          return 'Tối thiểu 6 ký tự';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Xác nhận mật khẩu mới
-                  StatefulBuilder(
-                    builder: (_, setConfirm) => TextFormField(
-                      controller: confirmCtrl,
-                      obscureText: obscureConfirm,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 14),
-                      decoration: _inputDeco(
-                        label: 'Xác nhận mật khẩu mới',
-                        suffix: IconButton(
-                          icon: Icon(
-                            obscureConfirm
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color: Colors.grey,
-                          ),
-                          onPressed: () => setConfirm(
-                              () => obscureConfirm = !obscureConfirm),
-                        ),
-                      ),
-                      validator: (v) => v != newCtrl.text
-                          ? 'Mật khẩu không khớp'
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Nút lưu
-                  StatefulBuilder(
-                    builder: (_, setBtn) => SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isLoading
-                            ? null
-                            : () async {
-                                if (!formKey.currentState!.validate()) {
-                                  return;
-                                }
-                                setBtn(() => isLoading = true);
-                                try {
-                                  await loginVm.changePassword(
-                                    oldPassword: oldCtrl.text,
-                                    newPassword: newCtrl.text,
-                                  );
-                                  if (context.mounted) {
-                                    Navigator.pop(ctx);
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(_snackbar(
-                                      '✅ Đổi mật khẩu thành công!',
-                                      Colors.green.shade600,
-                                    ));
-                                  }
-                                } catch (e) {
-                                  setBtn(() => isLoading = false);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(_snackbar(
-                                      '❌ Mật khẩu hiện tại không đúng',
-                                      Colors.red.shade400,
-                                    ));
-                                  }
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2),
-                              )
-                            : Text(
-                                'Lưu thay đổi',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      builder: (ctx) => _ChangePasswordSheet(loginVm: loginVm),
     );
   }
 
   // ── Logout confirm ────────────────────────────────────────────────────────
-  Future<void> _handleLogout(
-      BuildContext context, LoginViewModel vm) async {
+  Future<void> _handleLogout(BuildContext context, LoginViewModel vm) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -403,8 +199,7 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context, false),
             child: Text('Huỷ',
                 style: GoogleFonts.plusJakartaSans(
-                    color: AppColors.brownMid,
-                    fontWeight: FontWeight.w600)),
+                    color: AppColors.brownMid, fontWeight: FontWeight.w600)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -430,14 +225,214 @@ class ProfileScreen extends StatelessWidget {
       );
     }
   }
+}
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  InputDecoration _inputDeco(
-      {required String label, required Widget suffix}) {
+// ── Change Password Sheet — StatefulWidget để quản lý state đúng ─────────────
+// FIX: Tách thành StatefulWidget riêng, không dùng biến local trong builder
+class _ChangePasswordSheet extends StatefulWidget {
+  final LoginViewModel loginVm;
+  const _ChangePasswordSheet({required this.loginVm});
+
+  @override
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
+}
+
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _oldCtrl = TextEditingController();
+  final _newCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+
+  bool _obscureOld = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _oldCtrl.dispose();
+    _newCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.loginVm.changePassword(
+        oldPassword: _oldCtrl.text,
+        newPassword: _newCtrl.text,
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(_snackbar(
+          '✅ Đổi mật khẩu thành công!',
+          Colors.green.shade600,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(_snackbar(
+          '❌ Mật khẩu hiện tại không đúng',
+          Colors.red.shade400,
+        ));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Text(
+              'Đổi mật khẩu',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.brownDeep,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Mật khẩu hiện tại
+            TextFormField(
+              controller: _oldCtrl,
+              obscureText: _obscureOld,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
+              decoration: _inputDeco(
+                label: 'Mật khẩu hiện tại',
+                suffix: IconButton(
+                  icon: Icon(
+                    _obscureOld
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () => setState(() => _obscureOld = !_obscureOld),
+                ),
+              ),
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'Vui lòng nhập mật khẩu cũ' : null,
+            ),
+            const SizedBox(height: 12),
+
+            // Mật khẩu mới
+            TextFormField(
+              controller: _newCtrl,
+              obscureText: _obscureNew,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
+              decoration: _inputDeco(
+                label: 'Mật khẩu mới',
+                suffix: IconButton(
+                  icon: Icon(
+                    _obscureNew
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                ),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu mới';
+                if (v.length < 6) return 'Tối thiểu 6 ký tự';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Xác nhận mật khẩu mới
+            TextFormField(
+              controller: _confirmCtrl,
+              obscureText: _obscureConfirm,
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
+              decoration: _inputDeco(
+                label: 'Xác nhận mật khẩu mới',
+                suffix: IconButton(
+                  icon: Icon(
+                    _obscureConfirm
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                ),
+              ),
+              validator: (v) =>
+                  v != _newCtrl.text ? 'Mật khẩu không khớp' : null,
+            ),
+            const SizedBox(height: 24),
+
+            // Nút lưu
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(
+                        'Lưu thay đổi',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDeco({required String label, required Widget suffix}) {
     return InputDecoration(
       labelText: label,
-      labelStyle: GoogleFonts.plusJakartaSans(
-          fontSize: 13, color: Colors.grey.shade500),
+      labelStyle:
+          GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey.shade500),
       filled: true,
       fillColor: Colors.grey.shade50,
       suffixIcon: suffix,
@@ -451,8 +446,7 @@ class ProfileScreen extends StatelessWidget {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide:
-            const BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -473,8 +467,7 @@ class ProfileScreen extends StatelessWidget {
                 fontWeight: FontWeight.w600, color: Colors.white)),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
       );
 }

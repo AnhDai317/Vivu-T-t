@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 class ViVuTextField extends StatelessWidget {
   const ViVuTextField({
     super.key,
-    required this.label,
+    this.label, // BỎ required ở đây
     required this.hint,
     required this.prefixIcon,
     this.controller,
@@ -18,7 +18,7 @@ class ViVuTextField extends StatelessWidget {
     this.onChanged,
   });
 
-  final String label;
+  final String? label; // Thêm dấu ? để cho phép giá trị null
   final String hint;
   final IconData prefixIcon;
   final TextEditingController? controller;
@@ -35,15 +35,18 @@ class ViVuTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.brownDeep,
+        // CHỈ hiển thị Label và khoảng trống nếu label khác null và không rỗng
+        if (label != null && label!.isNotEmpty) ...[
+          Text(
+            label!,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.brownDeep,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
         TextFormField(
           controller: controller,
           obscureText: obscureText,

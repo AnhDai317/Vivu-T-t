@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 
 class CauMayScreen extends StatefulWidget {
   const CauMayScreen({super.key});
@@ -19,7 +18,6 @@ class _CauMayScreenState extends State<CauMayScreen>
   String _selectedPrayer = ''; // Lời cầu nguyện đã chọn
   bool _prayerSent = false; // Đã gửi lời cầu
 
-  // Smoke particles
   late AnimationController _smokeCtrl;
   late AnimationController _glowCtrl;
   late AnimationController _flameCtrl;
@@ -75,6 +73,11 @@ class _CauMayScreenState extends State<CauMayScreen>
 
   @override
   void dispose() {
+    _smokeCtrl.stop();
+    _glowCtrl.stop();
+    _flameCtrl.stop();
+    _bellCtrl.stop();
+
     _smokeCtrl.dispose();
     _glowCtrl.dispose();
     _flameCtrl.dispose();
@@ -83,6 +86,7 @@ class _CauMayScreenState extends State<CauMayScreen>
   }
 
   void _spawnSmoke() {
+    if (!mounted) return;
     if (!_smokeOn) return;
     if (_rng.nextDouble() < 0.3) {
       setState(() {
@@ -95,7 +99,6 @@ class _CauMayScreenState extends State<CauMayScreen>
             opacity: 0.3 + _rng.nextDouble() * 0.3,
           ),
         );
-        // Cập nhật vị trí
         for (final p in _particles) {
           p.y -= p.speed;
           p.x += p.drift;
@@ -150,22 +153,26 @@ class _CauMayScreenState extends State<CauMayScreen>
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
+                  // Tự động ẩn nút Back nếu là Tab
+                  Navigator.canPop(context)
+                      ? GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        )
+                      : const SizedBox(width: 40),
+
                   const Spacer(),
                   Text(
                     '🙏 Cầu May',
@@ -176,7 +183,6 @@ class _CauMayScreenState extends State<CauMayScreen>
                     ),
                   ),
                   const Spacer(),
-                  // Toggle nhạc & khói
                   Row(
                     children: [
                       _ToggleBtn(
@@ -213,7 +219,6 @@ class _CauMayScreenState extends State<CauMayScreen>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Nền mờ gradient
                           Positioned.fill(
                             child: AnimatedBuilder(
                               animation: _glowCtrl,
@@ -236,7 +241,6 @@ class _CauMayScreenState extends State<CauMayScreen>
                             ),
                           ),
 
-                          // Khói particles
                           if (_smokeOn && _isIncenseLit)
                             Positioned.fill(
                               child: CustomPaint(
@@ -247,29 +251,26 @@ class _CauMayScreenState extends State<CauMayScreen>
                               ),
                             ),
 
-                          // Lư hương
                           Positioned(
                             bottom: 20,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Que hương
                                 AnimatedBuilder(
                                   animation: _flameCtrl,
                                   builder: (_, __) => Stack(
                                     alignment: Alignment.topCenter,
                                     children: [
-                                      // Que hương thân
                                       Container(
                                         width: 3,
                                         height: 120,
                                         decoration: BoxDecoration(
-                                          gradient: LinearGradient(
+                                          gradient: const LinearGradient(
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
                                             colors: [
-                                              const Color(0xFF8B4513),
-                                              const Color(0xFF4A2000),
+                                              Color(0xFF8B4513),
+                                              Color(0xFF4A2000),
                                             ],
                                           ),
                                           borderRadius: BorderRadius.circular(
@@ -277,7 +278,6 @@ class _CauMayScreenState extends State<CauMayScreen>
                                           ),
                                         ),
                                       ),
-                                      // Đầu hồng (phần đã cháy)
                                       if (_isIncenseLit)
                                         Positioned(
                                           top: 0,
@@ -316,22 +316,19 @@ class _CauMayScreenState extends State<CauMayScreen>
                                     ],
                                   ),
                                 ),
-
                                 const SizedBox(height: 4),
-
-                                // Lư hương (bát)
                                 AnimatedBuilder(
                                   animation: _glowCtrl,
                                   builder: (_, __) => Container(
                                     width: 80,
                                     height: 45,
                                     decoration: BoxDecoration(
-                                      gradient: LinearGradient(
+                                      gradient: const LinearGradient(
                                         begin: Alignment.topCenter,
                                         end: Alignment.bottomCenter,
                                         colors: [
-                                          const Color(0xFFB8860B),
-                                          const Color(0xFF8B6914),
+                                          Color(0xFFB8860B),
+                                          Color(0xFF8B6914),
                                         ],
                                       ),
                                       borderRadius: const BorderRadius.only(
@@ -372,11 +369,9 @@ class _CauMayScreenState extends State<CauMayScreen>
                             ),
                           ),
 
-                          // Nến 2 bên
                           _buildCandle(left: true),
                           _buildCandle(left: false),
 
-                          // Nút thắp / tắt
                           Positioned(
                             top: 20,
                             child: GestureDetector(
@@ -670,10 +665,10 @@ class _CauMayScreenState extends State<CauMayScreen>
                 width: 8,
                 height: 12 + _flameCtrl.value * 4,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [const Color(0xFFFFFF99), const Color(0xFFFFA500)],
+                    colors: [Color(0xFFFFFF99), Color(0xFFFFA500)],
                   ),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(4),
@@ -721,7 +716,6 @@ class _CauMayScreenState extends State<CauMayScreen>
   }
 }
 
-// ── Smoke Painter ─────────────────────────────────────────────────────────────
 class _SmokeParticle {
   double x;
   double y;
@@ -763,7 +757,6 @@ class _SmokePainter extends CustomPainter {
   bool shouldRepaint(_SmokePainter old) => true;
 }
 
-// ── Toggle Button ─────────────────────────────────────────────────────────────
 class _ToggleBtn extends StatelessWidget {
   final IconData icon;
   final bool active;

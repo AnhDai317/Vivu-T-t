@@ -10,9 +10,11 @@ import 'package:vivu_tet/domain/entities/trip.dart';
 import 'package:vivu_tet/domain/entities/weather.dart';
 import 'package:vivu_tet/main_screen.dart';
 import 'package:vivu_tet/presentations/destinations/destinations_screen.dart';
-import 'package:vivu_tet/presentations/planner/trip_list_screen.dart';
+import 'package:vivu_tet/presentations/map/map_screen.dart';
+import 'package:vivu_tet/presentations/checklist/checklist_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
+import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart'; // Đã thêm import
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -41,31 +43,43 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Tết 2027 (Đinh Mùi)
   int _daysUntilTet() {
-    final tet2027 = DateTime(2027, 1, 29);
+    final tet2027 = DateTime(2027, 2, 17);
     final now = DateTime.now();
     final diff = tet2027.difference(DateTime(now.year, now.month, now.day));
     return diff.inDays.clamp(0, 9999);
   }
 
-  void _switchTab(BuildContext context, int index) {
-    context.findAncestorStateOfType<MainScreenState>()?.switchTab(index);
-  }
+  MainScreenState? get _mainState =>
+      context.findAncestorStateOfType<MainScreenState>();
 
-  void _goToTripList(BuildContext context, {DateTime? selectDate}) {
-    // Lưu ngày muốn select vào HomeViewModel trước khi switch tab
-    if (selectDate != null) {
-      context.read<HomeViewModel>().setSelectedTripDate(selectDate);
-    }
-    context.findAncestorStateOfType<MainScreenState>()?.switchTab(0);
-  }
+  void _goToTripList({DateTime? selectDate}) =>
+      _mainState?.openTripList(selectDate: selectDate);
 
-  void _goToDestinations(BuildContext context) {
+  void _goToMap() => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const MapScreen()),
+  );
+
+  // Đã sửa để truyền Provider sang trang mới
+  void _goToChecklist() {
+    final checklistVm = context.read<ChecklistViewModel>();
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const DestinationsScreen()),
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: checklistVm,
+          child: const ChecklistScreen(),
+        ),
+      ),
     );
   }
+
+  void _goToDestinations() => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const DestinationsScreen()),
+  );
 
   Future<void> _openMaps(SpringDestination dest) async {
     final q = Uri.encodeComponent(dest.name);
@@ -102,7 +116,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── AppBar ──────────────────────────────────────────────
+                // ── Header ─────────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
@@ -162,7 +176,7 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
-                // ── 4 nút menu ──────────────────────────────────────────
+                // ── 4 nút menu ─────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -173,28 +187,28 @@ class _HomePageState extends State<HomePage> {
                         line1: 'Sổ tay',
                         line2: 'Lịch trình',
                         color: const Color(0xFFE53935),
-                        onTap: () => _goToTripList(context),
-                      ),
-                      _MenuBtn(
-                        icon: Icons.checklist_rounded,
-                        line1: 'Checklist',
-                        line2: 'Hành trang',
-                        color: const Color(0xFF43A047),
-                        onTap: () => _switchTab(context, 2),
+                        onTap: () => _goToTripList(),
                       ),
                       _MenuBtn(
                         icon: Icons.map_rounded,
                         line1: 'Bản đồ',
                         line2: 'Du xuân',
                         color: const Color(0xFF1E88E5),
-                        onTap: () => _switchTab(context, 1),
+                        onTap: _goToMap,
+                      ),
+                      _MenuBtn(
+                        icon: Icons.checklist_rounded,
+                        line1: 'Checklist',
+                        line2: 'Hành trang',
+                        color: const Color(0xFF43A047),
+                        onTap: _goToChecklist,
                       ),
                       _MenuBtn(
                         icon: Icons.place_rounded,
                         line1: 'Gợi ý',
                         line2: 'Điểm đến',
                         color: const Color(0xFF8E24AA),
-                        onTap: () => _goToDestinations(context),
+                        onTap: _goToDestinations,
                       ),
                     ],
                   ),
@@ -203,14 +217,14 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 28),
 
                 _TripsSection(
-                  onViewAll: () => _goToTripList(context),
-                  onTapCard: (date) => _goToTripList(context, selectDate: date),
+                  onViewAll: () => _goToTripList(),
+                  onTapCard: (date) => _goToTripList(selectDate: date),
                 ),
 
                 const SizedBox(height: 28),
 
                 _DestinationsSection(
-                  onViewAll: () => _goToDestinations(context),
+                  onViewAll: _goToDestinations,
                   onOpenMaps: _openMaps,
                 ),
               ],
@@ -227,7 +241,6 @@ class _HeroBanner extends StatelessWidget {
   final int daysLeft;
   final Weather? weather;
   final bool weatherLoading;
-
   const _HeroBanner({
     required this.daysLeft,
     required this.weather,
@@ -252,7 +265,6 @@ class _HeroBanner extends StatelessWidget {
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
               child: Column(
@@ -260,7 +272,11 @@ class _HeroBanner extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.celebration_rounded, color: Colors.white, size: 14),
+                      const Icon(
+                        Icons.celebration_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'ĐẾM NGƯỢC TẾT 2027',
@@ -291,7 +307,7 @@ class _HeroBanner extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'đến Tết Đinh Mùi',
+                    'đến Tết Đinh Mùi 2027',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -301,11 +317,12 @@ class _HeroBanner extends StatelessWidget {
                 ],
               ),
             ),
-
-            Container(width: 1, height: 60, color: Colors.white.withOpacity(0.25)),
+            Container(
+              width: 1,
+              height: 60,
+              color: Colors.white.withOpacity(0.25),
+            ),
             const SizedBox(width: 16),
-
-            // Thời tiết
             SizedBox(
               width: 100,
               child: weatherLoading
@@ -316,7 +333,9 @@ class _HeroBanner extends StatelessWidget {
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -329,68 +348,73 @@ class _HeroBanner extends StatelessWidget {
                       ],
                     )
                   : weather == null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text('🌡️', style: TextStyle(fontSize: 26)),
+                        Text(
+                          'Không có\ndữ liệu',
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            const Text('🌡️', style: TextStyle(fontSize: 26)),
+                            const Icon(
+                              Icons.location_on,
+                              color: Colors.white,
+                              size: 11,
+                            ),
+                            const SizedBox(width: 2),
                             Text(
-                              'Không có\ndữ liệu',
-                              textAlign: TextAlign.right,
+                              'HÀ NỘI',
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                color: Colors.white.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                const Icon(Icons.location_on,
-                                    color: Colors.white, size: 11),
-                                const SizedBox(width: 2),
-                                Text(
-                                  'HÀ NỘI',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white.withOpacity(0.85),
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(weather!.icon,
-                                    style: const TextStyle(fontSize: 20)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${weather!.temperature.toStringAsFixed(0)}°C',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              weather!.description,
-                              textAlign: TextAlign.right,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white.withOpacity(0.85),
+                                letterSpacing: 1,
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              weather!.icon,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${weather!.temperature.toStringAsFixed(0)}°C',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          weather!.description,
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -399,14 +423,13 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ── Menu Button — icon Material + 2 dòng label ────────────────────────────────
+// ── Menu Button ────────────────────────────────────────────────────────────────
 class _MenuBtn extends StatelessWidget {
   final IconData icon;
   final String line1;
   final String line2;
   final Color color;
   final VoidCallback onTap;
-
   const _MenuBtn({
     required this.icon,
     required this.line1,
@@ -435,9 +458,7 @@ class _MenuBtn extends StatelessWidget {
                 ),
               ],
             ),
-            child: Center(
-              child: Icon(icon, color: color, size: 30),
-            ),
+            child: Center(child: Icon(icon, color: color, size: 30)),
           ),
           const SizedBox(height: 7),
           Text(
@@ -471,12 +492,8 @@ class _TripsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HomeViewModel>();
-
-    // Lấy trips sắp tới, sắp xếp theo ngày
     final upcoming = vm.trips.where((t) => !t.isPast || t.isToday).toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
-
-    // Lấy tối đa 2 ngày gần nhất để hiện
     final displayDays = upcoming.take(2).toList();
 
     return Column(
@@ -508,9 +525,7 @@ class _TripsSection extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(height: 12),
-
         if (vm.isLoading)
           const Padding(
             padding: EdgeInsets.all(20),
@@ -558,10 +573,10 @@ class _TripsSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: displayDays
-                  .map((t) => _TripCard(
-                        trip: t,
-                        onTap: () => onTapCard(t.startDate),
-                      ))
+                  .map(
+                    (t) =>
+                        _TripCard(trip: t, onTap: () => onTapCard(t.startDate)),
+                  )
                   .toList(),
             ),
           ),
@@ -578,7 +593,8 @@ class _TripsSection extends StatelessWidget {
                     color: AppColors.primary.withOpacity(0.07),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: AppColors.primary.withOpacity(0.2)),
+                      color: AppColors.primary.withOpacity(0.2),
+                    ),
                   ),
                   child: Text(
                     'Xem thêm ${upcoming.length - 2} ngày →',
@@ -608,7 +624,6 @@ class _TripCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final previewActs = trip.activities.take(2).toList();
     final extraCount = trip.activities.length - 2;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -627,14 +642,15 @@ class _TripCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // ── Header ngày ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
@@ -663,7 +679,9 @@ class _TripCard extends StatelessWidget {
                   if (trip.isToday)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(20),
@@ -680,77 +698,70 @@ class _TripCard extends StatelessWidget {
                 ],
               ),
             ),
-
-            // ── Activities preview ────────────────────────────────────────
             if (trip.activities.isEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
                 child: Row(
                   children: [
-                    Icon(Icons.event_busy_rounded,
-                        size: 14, color: Colors.grey.shade400),
+                    Icon(
+                      Icons.event_busy_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Chưa có hoạt động',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11, color: Colors.grey.shade400),
+                        fontSize: 11,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
                   ],
                 ),
               )
             else ...[
               Divider(height: 1, color: Colors.grey.shade100),
-              ...previewActs.map((act) => Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
+              ...previewActs.map(
+                (act) => Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            act.title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.brownDeep,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          act.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.brownDeep,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (act.location.isNotEmpty) ...[
-                          Icon(Icons.location_on,
-                              size: 11, color: Colors.grey.shade400),
-                          const SizedBox(width: 2),
-                          Flexible(
-                            child: Text(
-                              act.location,
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  color: Colors.grey.shade500),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               if (extraCount > 0)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
@@ -771,10 +782,11 @@ class _TripCard extends StatelessWidget {
     );
   }
 }
+
+// ── Destinations Section ──────────────────────────────────────────────────────
 class _DestinationsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   final Function(SpringDestination) onOpenMaps;
-
   const _DestinationsSection({
     required this.onViewAll,
     required this.onOpenMaps,
@@ -783,7 +795,6 @@ class _DestinationsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final featured = SpringDestinationsData.featured;
-
     return Column(
       children: [
         Padding(
@@ -813,9 +824,7 @@ class _DestinationsSection extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(height: 12),
-
         SizedBox(
           height: 200,
           child: ListView.builder(
@@ -828,7 +837,9 @@ class _DestinationsSection extends StatelessWidget {
                 onTap: () => onOpenMaps(dest),
                 child: Container(
                   width: 160,
-                  margin: EdgeInsets.only(right: i < featured.length - 1 ? 12 : 0),
+                  margin: EdgeInsets.only(
+                    right: i < featured.length - 1 ? 12 : 0,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
@@ -844,10 +855,14 @@ class _DestinationsSection extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        // ── Ảnh từ assets ─────────────────────────────
-                        _DestImage(dest: dest),
-
-                        // ── Gradient overlay ──────────────────────────
+                        dest.imagePath.isNotEmpty
+                            ? Image.asset(
+                                dest.imagePath,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _imgFallback(dest),
+                              )
+                            : _imgFallback(dest),
                         DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -861,15 +876,15 @@ class _DestinationsSection extends StatelessWidget {
                             ),
                           ),
                         ),
-
-                        // ── Hot badge ─────────────────────────────────
                         if (dest.isHot)
                           Positioned(
                             top: 10,
                             right: 10,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 3),
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.red.shade500,
                                 borderRadius: BorderRadius.circular(20),
@@ -884,8 +899,6 @@ class _DestinationsSection extends StatelessWidget {
                               ),
                             ),
                           ),
-
-                        // ── Info bên dưới ─────────────────────────────
                         Positioned(
                           left: 10,
                           right: 10,
@@ -906,8 +919,11 @@ class _DestinationsSection extends StatelessWidget {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  const Icon(Icons.star_rounded,
-                                      size: 11, color: Colors.amber),
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    size: 11,
+                                    color: Colors.amber,
+                                  ),
                                   const SizedBox(width: 3),
                                   Text(
                                     '${dest.rating}',
@@ -946,27 +962,11 @@ class _DestinationsSection extends StatelessWidget {
       ],
     );
   }
-}
 
-// ── Widget ảnh dùng Image.asset, fallback về emoji nếu file chưa có ───────────
-class _DestImage extends StatelessWidget {
-  final SpringDestination dest;
-  const _DestImage({required this.dest});
-
-  @override
-  Widget build(BuildContext context) {
-    if (dest.imagePath.isEmpty) return _fallback();
-    return Image.asset(
-      dest.imagePath,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => _fallback(),
-    );
-  }
-
-  Widget _fallback() => Container(
-        color: AppColors.primary.withOpacity(0.12),
-        child: Center(
-          child: Text(dest.emoji, style: const TextStyle(fontSize: 44)),
-        ),
-      );
+  Widget _imgFallback(SpringDestination dest) => Container(
+    color: AppColors.primary.withOpacity(0.12),
+    child: Center(
+      child: Text(dest.emoji, style: const TextStyle(fontSize: 44)),
+    ),
+  );
 }

@@ -14,7 +14,11 @@ import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 
 class TripListScreen extends StatefulWidget {
-  const TripListScreen({super.key});
+  // FIX: nhận onBack để quay về HomePage qua IndexedStack
+  // thay vì Navigator.pop (gây mất footer)
+  final VoidCallback? onBack;
+
+  const TripListScreen({super.key, this.onBack});
 
   @override
   State<TripListScreen> createState() => _TripListScreenState();
@@ -27,7 +31,6 @@ class _TripListScreenState extends State<TripListScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-select sau khi build xong để có allTrips
     WidgetsBinding.instance.addPostFrameCallback((_) => _autoSelectDate());
   }
 
@@ -37,7 +40,6 @@ class _TripListScreenState extends State<TripListScreen> {
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
     if (allTrips.isEmpty) return;
 
-    // Ưu tiên: ngày được request từ Home card
     final requestedDate = vm.selectedTripDate;
     if (requestedDate != null) {
       final idx = allTrips.indexWhere(
@@ -53,7 +55,6 @@ class _TripListScreenState extends State<TripListScreen> {
       }
     }
 
-    // Fallback: ngày hôm nay
     final today = DateTime.now();
     int idx = allTrips.indexWhere(
       (t) =>
@@ -62,7 +63,6 @@ class _TripListScreenState extends State<TripListScreen> {
           t.startDate.day == today.day,
     );
 
-    // Không có hôm nay → ngày gần nhất trong tương lai
     if (idx < 0) {
       idx = allTrips.indexWhere((t) => !t.isPast || t.isToday);
     }
@@ -70,7 +70,14 @@ class _TripListScreenState extends State<TripListScreen> {
     if (idx >= 0 && mounted) setState(() => _selectedIndex = idx);
   }
 
-  // ── Share: text ──────────────────────────────────────────────────────────────
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else {
+      Navigator.maybePop(context);
+    }
+  }
+
   void _shareAsText(Trip trip) {
     final buf = StringBuffer();
     buf.writeln('🎋 KẾ HOẠCH TẾT 2027 — ${trip.title.toUpperCase()}');
@@ -93,7 +100,6 @@ class _TripListScreenState extends State<TripListScreen> {
     Share.share(buf.toString(), subject: 'Kế hoạch: ${trip.title}');
   }
 
-  // ── Share: image ─────────────────────────────────────────────────────────────
   Future<void> _shareAsImage(Trip trip) async {
     try {
       final boundary =
@@ -126,7 +132,6 @@ class _TripListScreenState extends State<TripListScreen> {
     }
   }
 
-  // ── Share: copy ──────────────────────────────────────────────────────────────
   void _copyToClipboard(Trip trip) {
     final buf = StringBuffer();
     buf.writeln('🎋 ${trip.title}');
@@ -153,7 +158,6 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Share bottom sheet ────────────────────────────────────────────────────────
   void _showShareSheet(Trip trip) {
     showModalBottomSheet(
       context: context,
@@ -166,7 +170,6 @@ class _TripListScreenState extends State<TripListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
             Container(
               width: 40,
               height: 4,
@@ -193,7 +196,6 @@ class _TripListScreenState extends State<TripListScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
             _ShareOption(
               icon: Icons.share_rounded,
               color: const Color(0xFF4FACFE),
@@ -232,7 +234,6 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Delete confirm ────────────────────────────────────────────────────────────
   void _confirmDelete(HomeViewModel vm, Trip trip) {
     showDialog(
       context: context,
@@ -308,14 +309,15 @@ class _TripListScreenState extends State<TripListScreen> {
         bottom: false,
         child: Column(
           children: [
-            // ── Header ────────────────────────────────────────────────────────
+            // ── Header ──────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
                 children: [
+                  // FIX: dùng _handleBack thay vì Navigator.pop
                   _CircleBtn(
                     icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () => Navigator.pop(context),
+                    onTap: _handleBack,
                   ),
                   const Spacer(),
                   Text(
@@ -327,7 +329,6 @@ class _TripListScreenState extends State<TripListScreen> {
                     ),
                   ),
                   const Spacer(),
-                  // Share button (chỉ hiện khi có trip)
                   if (selectedTrip != null)
                     _CircleBtn(
                       icon: Icons.ios_share_rounded,
@@ -342,7 +343,7 @@ class _TripListScreenState extends State<TripListScreen> {
 
             const SizedBox(height: 16),
 
-            // ── Date Chips — 1 chip = 1 ngày ─────────────────────────────────
+            // ── Date Chips ────────────────────────────────────────────────────
             if (allTrips.isNotEmpty)
               SizedBox(
                 height: 88,
@@ -384,7 +385,6 @@ class _TripListScreenState extends State<TripListScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Nhãn âm lịch M.1, M.2...
                             Text(
                               t.shortDateLabel,
                               style: GoogleFonts.plusJakartaSans(
@@ -398,7 +398,6 @@ class _TripListScreenState extends State<TripListScreen> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            // Ngày dương lịch
                             Text(
                               '${t.startDate.day}/${t.startDate.month}',
                               style: GoogleFonts.plusJakartaSans(
@@ -410,7 +409,6 @@ class _TripListScreenState extends State<TripListScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            // Badge số hoạt động
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -447,7 +445,6 @@ class _TripListScreenState extends State<TripListScreen> {
 
             const SizedBox(height: 8),
 
-            // ── Chi tiết ngày được chọn ───────────────────────────────────────
             Expanded(
               child: vm.isLoading
                   ? const Center(
@@ -510,7 +507,6 @@ class _DayDetailView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Card tiêu đề ngày ──────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -621,7 +617,6 @@ class _DayDetailView extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // ── Timeline hoạt động ─────────────────────────────────────────
           if (trip.activities.isEmpty)
             Container(
               width: double.infinity,
@@ -652,7 +647,6 @@ class _DayDetailView extends StatelessWidget {
           else
             Stack(
               children: [
-                // Đường kẻ dọc timeline
                 Positioned(
                   left: 20,
                   top: 0,
@@ -669,13 +663,11 @@ class _DayDetailView extends StatelessWidget {
                     final i = e.key;
                     final act = e.value;
                     final isFirst = i == 0;
-
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Dot
                           Container(
                             width: 42,
                             alignment: Alignment.topCenter,
@@ -697,7 +689,6 @@ class _DayDetailView extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // Card hoạt động
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(14),
@@ -725,7 +716,6 @@ class _DayDetailView extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  // Badge giờ
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -811,14 +801,13 @@ class _DayDetailView extends StatelessWidget {
   }
 }
 
-// ── Share Option Widget ────────────────────────────────────────────────────────
+// ── Share Option ──────────────────────────────────────────────────────────────
 class _ShareOption extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String label;
   final String subtitle;
   final VoidCallback onTap;
-
   const _ShareOption({
     required this.icon,
     required this.color,

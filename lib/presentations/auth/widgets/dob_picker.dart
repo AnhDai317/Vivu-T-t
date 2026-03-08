@@ -65,14 +65,6 @@ class DobPicker extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Ngày sinh',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.brownDeep,
-              ),
-            ),
-            Text(
               'Nhấp vào để chọn',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
