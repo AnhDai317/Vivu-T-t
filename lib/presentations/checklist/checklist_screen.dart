@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:vivu_tet/data/implementations/local/app_database.dart';
 import 'package:vivu_tet/domain/entities/checklist_category.dart';
+import 'package:vivu_tet/domain/entities/checklist_item.dart';
 import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 
@@ -46,6 +48,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     if (picked != null) vm.selectDate(picked);
   }
 
+  /// Dialog thêm item mới
   void _showAddDialog(
     BuildContext context,
     ChecklistViewModel vm,
@@ -115,6 +118,96 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
+  /// Dialog chỉnh sửa tên item
+  void _showEditDialog(
+    BuildContext context,
+    ChecklistViewModel vm,
+    ChecklistCategory cat,
+    ChecklistItem item,
+  ) {
+    final ctrl = TextEditingController(text: item.title);
+    final catColor = Color(cat.colorValue);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Text(cat.icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text(
+              'Sửa việc cần làm',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                color: AppColors.brownDeep,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 2,
+          minLines: 1,
+          decoration: InputDecoration(
+            hintText: 'Tên việc cần làm...',
+            filled: true,
+            fillColor: AppColors.warmCream,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: catColor, width: 1.5),
+            ),
+          ),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            color: AppColors.brownDeep,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Huỷ',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: catColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              final newTitle = ctrl.text.trim();
+              if (newTitle.isNotEmpty && newTitle != item.title) {
+                vm.editItem(cat.id, item.id, newTitle);
+              }
+              Navigator.pop(context);
+            },
+            child: Text(
+              'Lưu',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _fmtDate(DateTime d) {
     const w = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
     final isToday =
@@ -147,7 +240,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
-      // ── Không có floatingActionButton ──────────────────────────────────
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -160,7 +252,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 children: [
                   Row(
                     children: [
-                      // Nút Back
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
@@ -401,7 +492,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         color: AppColors.brownDeep,
                       ),
                     ),
-                    // Nút thêm — thay thế FAB
                     GestureDetector(
                       onTap: () => _showAddDialog(context, vm, cat),
                       child: Container(
@@ -461,95 +551,382 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                       itemCount: vm.itemsOfCategory(cat.id).length,
                       itemBuilder: (_, i) {
                         final item = vm.itemsOfCategory(cat.id)[i];
-                        return GestureDetector(
-                          onTap: () =>
+                        return _ChecklistItemTile(
+                          item: item,
+                          catColor: catColor,
+                          onToggle: () =>
                               vm.toggleItem(cat.id, item.id, !item.done),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              color: item.done
-                                  ? catColor.withOpacity(0.05)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: item.done
-                                    ? catColor.withOpacity(0.2)
-                                    : Colors.grey.shade100,
-                              ),
-                              boxShadow: item.done
-                                  ? null
-                                  : [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.03),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                            ),
-                            child: Row(
-                              children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    color: item.done
-                                        ? catColor
-                                        : Colors.transparent,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: item.done
-                                          ? catColor
-                                          : Colors.grey.shade300,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: item.done
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 14,
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    item.title,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: item.done
-                                          ? Colors.grey.shade400
-                                          : AppColors.brownDeep,
-                                      decoration: item.done
-                                          ? TextDecoration.lineThrough
-                                          : TextDecoration.none,
-                                    ),
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => vm.deleteItem(cat.id, item.id),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          onEdit: () => _showEditDialog(context, vm, cat, item),
+                          onDelete: () => vm.deleteItem(cat.id, item.id),
                         );
                       },
                     ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Item Tile với swipe-to-reveal hoặc long-press menu ────────────────────────
+class _ChecklistItemTile extends StatelessWidget {
+  final ChecklistItem item;
+  final Color catColor;
+  final VoidCallback onToggle;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _ChecklistItemTile({
+    required this.item,
+    required this.catColor,
+    required this.onToggle,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: Key(item.id),
+      // Vuốt phải → Edit
+      background: _SwipeBackground(
+        color: catColor,
+        icon: Icons.edit_rounded,
+        label: 'Sửa',
+        alignment: Alignment.centerLeft,
+      ),
+      // Vuốt trái → Delete
+      secondaryBackground: _SwipeBackground(
+        color: Colors.red.shade400,
+        icon: Icons.delete_rounded,
+        label: 'Xoá',
+        alignment: Alignment.centerRight,
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Vuốt phải → mở edit, KHÔNG dismiss
+          onEdit();
+          return false;
+        } else {
+          // Vuốt trái → confirm xoá
+          return await _confirmDelete(context);
+        }
+      },
+      onDismissed: (_) => onDelete(),
+      child: GestureDetector(
+        onTap: onToggle,
+        onLongPress: () => _showContextMenu(context),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: item.done ? catColor.withOpacity(0.05) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: item.done
+                  ? catColor.withOpacity(0.2)
+                  : Colors.grey.shade100,
+            ),
+            boxShadow: item.done
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+          ),
+          // Bọc nội dung bằng AnimatedOpacity để làm mờ nhẹ nhàng
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: item.done ? 0.6 : 1.0,
+            child: Row(
+              children: [
+                // Checkbox
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: item.done ? catColor : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: item.done ? catColor : Colors.grey.shade300,
+                      width: 2,
+                    ),
+                  ),
+                  child: item.done
+                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      : null,
+                ),
+                const SizedBox(width: 14),
+
+                // Title
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      // Chữ chuyển xám khi done
+                      color: item.done
+                          ? Colors.grey.shade500
+                          : AppColors.brownDeep,
+                      // BỎ gạch ngang ở đây
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ),
+
+                // Action buttons
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Nút edit
+                    GestureDetector(
+                      onTap: onEdit,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: catColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.edit_outlined,
+                          size: 15,
+                          color: catColor,
+                        ),
+                      ),
+                    ),
+                    // Nút xoá
+                    GestureDetector(
+                      onTap: onDelete,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 15,
+                          color: Colors.red.shade300,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              'Xoá việc này?',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                color: AppColors.brownDeep,
+              ),
+            ),
+            content: Text(
+              '"${item.title}"',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: AppColors.brownMid,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(
+                  'Huỷ',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade400,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Xoá',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  void _showContextMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              item.title,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.brownDeep,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: catColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.edit_rounded, color: catColor, size: 20),
+              ),
+              title: Text(
+                'Chỉnh sửa',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Đổi tên việc cần làm',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.delete_rounded,
+                  color: Colors.red.shade400,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Xoá',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red.shade400,
+                ),
+              ),
+              subtitle: Text(
+                'Xoá khỏi danh sách',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                onDelete();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Swipe background ──────────────────────────────────────────────────────────
+class _SwipeBackground extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String label;
+  final Alignment alignment;
+
+  const _SwipeBackground({
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.alignment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      alignment: alignment,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (alignment == Alignment.centerRight) ...[
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Icon(icon, color: Colors.white, size: 22),
+          if (alignment == Alignment.centerLeft) ...[
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

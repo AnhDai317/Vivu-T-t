@@ -4,4 +4,20 @@ abstract class ITripRepository {
   Future<List<Trip>> getTrips();
   Future<void> createTrip(Trip trip);
   Future<void> deleteTrip(String tripId);
+  Future<void> updateTripTitle({
+    required String tripId,
+    required String newTitle,
+  });
+  Future<void> updateActivity({
+    required String tripId,
+    required String activityId,
+    required int hour,
+    required int minute,
+    required String title,
+    required String location,
+  });
+  Future<void> deleteActivity({
+    required String tripId,
+    required String activityId,
+  });
 }

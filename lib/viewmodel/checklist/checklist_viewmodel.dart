@@ -10,25 +10,17 @@ class ChecklistViewModel extends ChangeNotifier {
 
   ChecklistViewModel(this._repo);
 
-  // Danh sách categories (chỉ metadata, không có items)
   List<ChecklistCategory> categories = [];
-
-  // Items của ngày đang chọn, group theo categoryId
   Map<String, List<ChecklistItem>> itemsByCategory = {};
-
-  // Ngày đang xem
   DateTime selectedDate = DateTime.now();
-
   bool isLoading = false;
   String? errorMessage;
 
-  // Format date thành key 'yyyy-MM-dd'
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   String get selectedDateKey => _dateKey(selectedDate);
 
-  // Tổng done/total của ngày đang chọn
   int get totalDone => itemsByCategory.values
       .expand((list) => list)
       .where((i) => i.done)
@@ -40,7 +32,6 @@ class ChecklistViewModel extends ChangeNotifier {
   double get totalProgress =>
       totalAll == 0 ? 0 : totalDone / totalAll;
 
-  // Done/total theo từng category
   int doneInCategory(String catId) =>
       (itemsByCategory[catId] ?? []).where((i) => i.done).length;
 
@@ -75,7 +66,6 @@ class ChecklistViewModel extends ChangeNotifier {
     final dateKey = _dateKey(date);
     final items = await _repo.getItemsByDate(dateKey);
 
-    // Group theo categoryId
     final map = <String, List<ChecklistItem>>{};
     for (final cat in categories) {
       map[cat.id] = [];
@@ -89,7 +79,6 @@ class ChecklistViewModel extends ChangeNotifier {
 
   Future<void> toggleItem(
       String categoryId, String itemId, bool done) async {
-    // Optimistic update
     final list = itemsByCategory[categoryId] ?? [];
     final item = list.firstWhere((i) => i.id == itemId);
     item.done = done;
@@ -118,6 +107,28 @@ class ChecklistViewModel extends ChangeNotifier {
       await _repo.addItem(newItem);
     } catch (e) {
       itemsByCategory[categoryId]?.removeLast();
+      notifyListeners();
+    }
+  }
+
+  /// Sửa tên item — cập nhật optimistic rồi ghi xuống DB
+  Future<void> editItem(
+      String categoryId, String itemId, String newTitle) async {
+    final list = itemsByCategory[categoryId] ?? [];
+    final index = list.indexWhere((i) => i.id == itemId);
+    if (index < 0) return;
+
+    final oldTitle = list[index].title;
+
+    // Optimistic update
+    list[index].title = newTitle;
+    notifyListeners();
+
+    try {
+      await _repo.editItem(itemId, newTitle);
+    } catch (e) {
+      // Rollback
+      list[index].title = oldTitle;
       notifyListeners();
     }
   }

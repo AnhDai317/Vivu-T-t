@@ -14,7 +14,6 @@ class ChecklistRepository implements IChecklistRepository {
       'checklist_categories',
       orderBy: 'sort_order ASC',
     );
-    // Trả về categories rỗng items — items load riêng theo ngày
     return catMaps
         .map((m) => ChecklistCategory(
               id: m['id'] as String,
@@ -73,6 +72,18 @@ class ChecklistRepository implements IChecklistRepository {
       'sort_order': maxOrder + 1,
       'item_date': item.itemDate,
     });
+  }
+
+  /// Cập nhật title item theo id
+  @override
+  Future<void> editItem(String itemId, String newTitle) async {
+    final db = await _db.database;
+    await db.update(
+      'checklist_items',
+      {'title': newTitle},
+      where: 'id = ?',
+      whereArgs: [itemId],
+    );
   }
 
   @override

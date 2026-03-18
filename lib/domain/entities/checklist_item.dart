@@ -1,7 +1,7 @@
 class ChecklistItem {
   final String id;
   final String categoryId;
-  final String title;
+  String title;      // mutable để edit optimistic
   final String itemDate; // 'yyyy-MM-dd'
   bool done;
 

@@ -9,15 +9,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:vivu_tet/domain/entities/trip.dart';
+import 'package:vivu_tet/domain/entities/trip_activity.dart';
 import 'package:vivu_tet/presentations/planner/create_trip_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 
 class TripListScreen extends StatefulWidget {
-  // FIX: nhận onBack để quay về HomePage qua IndexedStack
-  // thay vì Navigator.pop (gây mất footer)
   final VoidCallback? onBack;
-
   const TripListScreen({super.key, this.onBack});
 
   @override
@@ -31,30 +29,45 @@ class _TripListScreenState extends State<TripListScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _autoSelectDate());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _autoSelectNearestDate(),
+    );
   }
 
-  void _autoSelectDate() {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final vm = context.read<HomeViewModel>();
+    if (vm.selectedTripDate != null) {
+      _jumpToDate(vm.selectedTripDate!);
+      vm.clearSelectedTripDate();
+    }
+  }
+
+  void _jumpToDate(DateTime targetDate) {
     final vm = context.read<HomeViewModel>();
     final allTrips = [...vm.trips]
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
     if (allTrips.isEmpty) return;
+    final idx = allTrips.indexWhere(
+      (t) =>
+          t.startDate.year == targetDate.year &&
+          t.startDate.month == targetDate.month &&
+          t.startDate.day == targetDate.day,
+    );
+    if (idx >= 0 && mounted) setState(() => _selectedIndex = idx);
+  }
 
-    final requestedDate = vm.selectedTripDate;
-    if (requestedDate != null) {
-      final idx = allTrips.indexWhere(
-        (t) =>
-            t.startDate.year == requestedDate.year &&
-            t.startDate.month == requestedDate.month &&
-            t.startDate.day == requestedDate.day,
-      );
-      if (idx >= 0 && mounted) {
-        setState(() => _selectedIndex = idx);
-        vm.clearSelectedTripDate();
-        return;
-      }
+  void _autoSelectNearestDate() {
+    final vm = context.read<HomeViewModel>();
+    if (vm.selectedTripDate != null) {
+      _jumpToDate(vm.selectedTripDate!);
+      vm.clearSelectedTripDate();
+      return;
     }
-
+    final allTrips = [...vm.trips]
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    if (allTrips.isEmpty) return;
     final today = DateTime.now();
     int idx = allTrips.indexWhere(
       (t) =>
@@ -62,11 +75,8 @@ class _TripListScreenState extends State<TripListScreen> {
           t.startDate.month == today.month &&
           t.startDate.day == today.day,
     );
-
-    if (idx < 0) {
-      idx = allTrips.indexWhere((t) => !t.isPast || t.isToday);
-    }
-
+    if (idx < 0) idx = allTrips.indexWhere((t) => !t.isPast || t.isToday);
+    if (idx < 0 && allTrips.isNotEmpty) idx = allTrips.length - 1;
     if (idx >= 0 && mounted) setState(() => _selectedIndex = idx);
   }
 
@@ -76,6 +86,263 @@ class _TripListScreenState extends State<TripListScreen> {
     } else {
       Navigator.maybePop(context);
     }
+  }
+
+  // ── Sửa tên kế hoạch ─────────────────────────────────────────────────────
+  void _showEditTitleDialog(BuildContext context, HomeViewModel vm, Trip trip) {
+    final ctrl = TextEditingController(text: trip.title);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Sửa tên kế hoạch',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            color: AppColors.primary,
+          ),
+        ),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Tên kế hoạch...',
+            filled: true,
+            fillColor: AppColors.warmCream,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+          ),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            color: AppColors.brownDeep,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'HỦY',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              final newTitle = ctrl.text.trim();
+              if (newTitle.isEmpty) return;
+              Navigator.pop(context);
+              await vm.updateTripTitle(tripId: trip.id, newTitle: newTitle);
+            },
+            child: Text(
+              'LƯU',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Sửa activity ─────────────────────────────────────────────────────────
+  void _showEditActivityDialog(
+    BuildContext context,
+    HomeViewModel vm,
+    Trip trip,
+    TripActivity act,
+  ) {
+    TimeOfDay selectedTime = TimeOfDay(hour: act.hour, minute: act.minute);
+    final titleCtrl = TextEditingController(text: act.title);
+    final locationCtrl = TextEditingController(text: act.location);
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Sửa hoạt động',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.access_time_filled_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: Text(
+                    'Thời gian: ${selectedTime.format(ctx)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.edit, size: 18),
+                  onTap: () async {
+                    final t = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime,
+                    );
+                    if (t != null) setS(() => selectedTime = t);
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Tên hoạt động',
+                    filled: true,
+                    fillColor: AppColors.warmCream,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: locationCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Địa điểm (tuỳ chọn)',
+                    filled: true,
+                    fillColor: AppColors.warmCream,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('HỦY', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () async {
+                if (titleCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                await vm.updateActivity(
+                  tripId: trip.id,
+                  activityId: act.id,
+                  hour: selectedTime.hour,
+                  minute: selectedTime.minute,
+                  title: titleCtrl.text.trim(),
+                  location: locationCtrl.text.trim(),
+                );
+              },
+              child: Text(
+                'LƯU',
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Xoá activity (có confirm) ─────────────────────────────────────────────
+  void _confirmDeleteActivity(
+    BuildContext context,
+    HomeViewModel vm,
+    Trip trip,
+    TripActivity act,
+  ) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Xoá hoạt động?',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            color: AppColors.brownDeep,
+          ),
+        ),
+        content: Text(
+          '"${act.title}"',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            color: AppColors.brownMid,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Huỷ',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade400,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await vm.deleteActivity(tripId: trip.id, activityId: act.id);
+            },
+            child: Text(
+              'Xoá',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _shareAsText(Trip trip) {
@@ -234,7 +501,7 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  void _confirmDelete(HomeViewModel vm, Trip trip) {
+  void _confirmDeleteTrip(HomeViewModel vm, Trip trip) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -293,7 +560,6 @@ class _TripListScreenState extends State<TripListScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<HomeViewModel>();
-
     final allTrips = [...vm.trips]
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
 
@@ -309,12 +575,11 @@ class _TripListScreenState extends State<TripListScreen> {
         bottom: false,
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────────────
+            // ── Header ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
                 children: [
-                  // FIX: dùng _handleBack thay vì Navigator.pop
                   _CircleBtn(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: _handleBack,
@@ -343,7 +608,7 @@ class _TripListScreenState extends State<TripListScreen> {
 
             const SizedBox(height: 16),
 
-            // ── Date Chips ────────────────────────────────────────────────────
+            // ── Date Chips ──────────────────────────────────────────
             if (allTrips.isNotEmpty)
               SizedBox(
                 height: 88,
@@ -355,7 +620,6 @@ class _TripListScreenState extends State<TripListScreen> {
                     final t = allTrips[i];
                     final isSelected = i == _selectedIndex;
                     final isPast = t.isPast && !t.isToday;
-
                     return GestureDetector(
                       onTap: () => setState(() => _selectedIndex = i),
                       child: AnimatedContainer(
@@ -468,7 +732,22 @@ class _TripListScreenState extends State<TripListScreen> {
                       key: _shareKey,
                       child: _DayDetailView(
                         trip: selectedTrip!,
-                        onDelete: () => _confirmDelete(vm, selectedTrip),
+                        onDeleteTrip: () =>
+                            _confirmDeleteTrip(vm, selectedTrip),
+                        onEditTitle: () =>
+                            _showEditTitleDialog(context, vm, selectedTrip),
+                        onEditActivity: (act) => _showEditActivityDialog(
+                          context,
+                          vm,
+                          selectedTrip,
+                          act,
+                        ),
+                        onDeleteActivity: (act) => _confirmDeleteActivity(
+                          context,
+                          vm,
+                          selectedTrip,
+                          act,
+                        ),
                       ),
                     ),
             ),
@@ -482,8 +761,18 @@ class _TripListScreenState extends State<TripListScreen> {
 // ── Day Detail View ────────────────────────────────────────────────────────────
 class _DayDetailView extends StatelessWidget {
   final Trip trip;
-  final VoidCallback onDelete;
-  const _DayDetailView({required this.trip, required this.onDelete});
+  final VoidCallback onDeleteTrip;
+  final VoidCallback onEditTitle;
+  final void Function(TripActivity) onEditActivity;
+  final void Function(TripActivity) onDeleteActivity; // ← mới
+
+  const _DayDetailView({
+    required this.trip,
+    required this.onDeleteTrip,
+    required this.onEditTitle,
+    required this.onEditActivity,
+    required this.onDeleteActivity,
+  });
 
   String _fmtDate(DateTime d) {
     const w = [
@@ -507,6 +796,7 @@ class _DayDetailView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Trip header card ──────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -534,6 +824,7 @@ class _DayDetailView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Badge ngày
                       Row(
                         children: [
                           Container(
@@ -582,16 +873,63 @@ class _DayDetailView extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        trip.title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: isPast
-                              ? Colors.grey.shade500
-                              : AppColors.brownDeep,
-                        ),
+
+                      // Tên + nút Sửa tên
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              trip.title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isPast
+                                    ? Colors.grey.shade500
+                                    : AppColors.brownDeep,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: onEditTitle,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isPast
+                                    ? Colors.grey.shade200
+                                    : AppColors.primary.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 13,
+                                    color: isPast
+                                        ? Colors.grey.shade400
+                                        : AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Sửa tên',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: isPast
+                                          ? Colors.grey.shade400
+                                          : AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+
                       const SizedBox(height: 2),
                       Text(
                         _fmtDate(trip.startDate),
@@ -604,7 +942,7 @@ class _DayDetailView extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: onDelete,
+                  onPressed: onDeleteTrip,
                   icon: Icon(
                     Icons.delete_outline,
                     color: Colors.red.shade300,
@@ -617,6 +955,7 @@ class _DayDetailView extends StatelessWidget {
 
           const SizedBox(height: 16),
 
+          // ── Activities timeline ───────────────────────────────────
           if (trip.activities.isEmpty)
             Container(
               width: double.infinity,
@@ -663,11 +1002,13 @@ class _DayDetailView extends StatelessWidget {
                     final i = e.key;
                     final act = e.value;
                     final isFirst = i == 0;
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Dot
                           Container(
                             width: 42,
                             alignment: Alignment.topCenter,
@@ -689,9 +1030,16 @@ class _DayDetailView extends StatelessWidget {
                               ),
                             ),
                           ),
+
+                          // Card
                           Expanded(
                             child: Container(
-                              padding: const EdgeInsets.all(14),
+                              padding: const EdgeInsets.fromLTRB(
+                                14,
+                                12,
+                                10,
+                                12,
+                              ),
                               decoration: BoxDecoration(
                                 color: isPast
                                     ? Colors.white.withOpacity(0.55)
@@ -716,6 +1064,7 @@ class _DayDetailView extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
+                                  // Giờ
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -738,7 +1087,9 @@ class _DayDetailView extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 10),
+
+                                  // Title + location
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -782,6 +1133,50 @@ class _DayDetailView extends StatelessWidget {
                                           ),
                                         ],
                                       ],
+                                    ),
+                                  ),
+
+                                  // ── Nút ✏️ sửa ───────────────────
+                                  GestureDetector(
+                                    onTap: () => onEditActivity(act),
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      margin: const EdgeInsets.only(left: 4),
+                                      decoration: BoxDecoration(
+                                        color: isPast
+                                            ? Colors.grey.shade100
+                                            : AppColors.primary.withOpacity(
+                                                0.08,
+                                              ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.edit_outlined,
+                                        size: 14,
+                                        color: isPast
+                                            ? Colors.grey.shade400
+                                            : AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+
+                                  // ── Nút 🗑 xoá ───────────────────
+                                  GestureDetector(
+                                    onTap: () => onDeleteActivity(act),
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      margin: const EdgeInsets.only(left: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.delete_outline,
+                                        size: 14,
+                                        color: Colors.red.shade300,
+                                      ),
                                     ),
                                   ),
                                 ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/interfaces/repositories/itrip_repository.dart';
 import '../../domain/entities/trip.dart';
+import '../../domain/entities/trip_activity.dart';
 
 class HomeViewModel extends ChangeNotifier {
   final ITripRepository _tripRepository;
@@ -15,13 +16,12 @@ class HomeViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  // Ngày được chọn từ Home để TripListScreen auto-select
   DateTime? _selectedTripDate;
   DateTime? get selectedTripDate => _selectedTripDate;
 
   void setSelectedTripDate(DateTime date) {
     _selectedTripDate = date;
-    // Không cần notifyListeners vì chỉ đọc 1 lần rồi clear
+    notifyListeners();
   }
 
   void clearSelectedTripDate() {
@@ -47,6 +47,59 @@ class HomeViewModel extends ChangeNotifier {
       await _tripRepository.deleteTrip(tripId);
       _trips.removeWhere((t) => t.id == tripId);
       notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateTripTitle({
+    required String tripId,
+    required String newTitle,
+  }) async {
+    try {
+      await _tripRepository.updateTripTitle(tripId: tripId, newTitle: newTitle);
+      await loadTrips();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateActivity({
+    required String tripId,
+    required String activityId,
+    required int hour,
+    required int minute,
+    required String title,
+    required String location,
+  }) async {
+    try {
+      await _tripRepository.updateActivity(
+        tripId: tripId,
+        activityId: activityId,
+        hour: hour,
+        minute: minute,
+        title: title,
+        location: location,
+      );
+      await loadTrips();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteActivity({
+    required String tripId,
+    required String activityId,
+  }) async {
+    try {
+      await _tripRepository.deleteActivity(
+        tripId: tripId,
+        activityId: activityId,
+      );
+      await loadTrips();
     } catch (e) {
       _error = e.toString();
       notifyListeners();

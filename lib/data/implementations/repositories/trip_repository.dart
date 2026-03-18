@@ -6,14 +6,12 @@ import 'package:vivu_tet/domain/entities/trip_activity.dart';
 
 class TripRepository implements ITripRepository {
   final AppDatabase database;
-
   TripRepository(this.database);
 
   @override
   Future<List<Trip>> getTrips() async {
     final db = await database.database;
     final tripRows = await db.query('trips', orderBy: 'start_date ASC');
-
     final List<Trip> result = [];
     for (final row in tripRows) {
       final tripId = row['id'].toString();
@@ -23,7 +21,6 @@ class TripRepository implements ITripRepository {
         whereArgs: [tripId],
         orderBy: 'hour ASC, minute ASC',
       );
-
       final activities = actRows
           .map(
             (a) => TripActivity(
@@ -36,7 +33,6 @@ class TripRepository implements ITripRepository {
             ),
           )
           .toList();
-
       result.add(
         Trip(
           id: tripId,
@@ -53,14 +49,12 @@ class TripRepository implements ITripRepository {
   @override
   Future<void> createTrip(Trip trip) async {
     final db = await database.database;
-
     await db.insert('trips', {
       'id': trip.id,
       'title': trip.title,
       'start_date': trip.startDate.toIso8601String(),
       'end_date': trip.endDate.toIso8601String(),
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-
     for (final act in trip.activities) {
       await db.insert('trip_activities', {
         'id': act.id,
@@ -76,7 +70,51 @@ class TripRepository implements ITripRepository {
   @override
   Future<void> deleteTrip(String tripId) async {
     final db = await database.database;
-    // trip_activities tự xóa theo CASCADE
     await db.delete('trips', where: 'id = ?', whereArgs: [tripId]);
+  }
+
+  @override
+  Future<void> updateTripTitle({
+    required String tripId,
+    required String newTitle,
+  }) async {
+    final db = await database.database;
+    await db.update(
+      'trips',
+      {'title': newTitle},
+      where: 'id = ?',
+      whereArgs: [tripId],
+    );
+  }
+
+  @override
+  Future<void> updateActivity({
+    required String tripId,
+    required String activityId,
+    required int hour,
+    required int minute,
+    required String title,
+    required String location,
+  }) async {
+    final db = await database.database;
+    await db.update(
+      'trip_activities',
+      {'hour': hour, 'minute': minute, 'title': title, 'location': location},
+      where: 'id = ? AND trip_id = ?',
+      whereArgs: [activityId, tripId],
+    );
+  }
+
+  @override
+  Future<void> deleteActivity({
+    required String tripId,
+    required String activityId,
+  }) async {
+    final db = await database.database;
+    await db.delete(
+      'trip_activities',
+      where: 'id = ? AND trip_id = ?',
+      whereArgs: [activityId, tripId],
+    );
   }
 }

@@ -17,6 +17,25 @@ class Trip {
     this.activities = const [],
   });
 
+  /// Tạo bản copy với các trường được cập nhật
+  Trip copyWith({
+    String? id,
+    String? title,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? coverImageUrl,
+    List<TripActivity>? activities,
+  }) {
+    return Trip(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+      activities: activities ?? this.activities,
+    );
+  }
+
   /// Trả về nhãn ngày âm lịch nếu title có chứa "Mùng X" hoặc "M.X"
   /// Tạm thời dùng startDate so với ngày Mùng 1 Tết 2026 (17/02/2026)
   String get shortDateLabel {
@@ -25,7 +44,6 @@ class Trip {
     if (diff >= 0 && diff <= 14) {
       return 'M.${diff + 1}';
     }
-    // Trả về ngày dương lịch dạng ngắn
     return '${startDate.day}/${startDate.month}';
   }
 
