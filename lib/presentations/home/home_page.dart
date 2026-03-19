@@ -13,8 +13,9 @@ import 'package:vivu_tet/presentations/destinations/destinations_screen.dart';
 import 'package:vivu_tet/presentations/map/map_screen.dart';
 import 'package:vivu_tet/presentations/checklist/checklist_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
+import 'package:vivu_tet/utils/tet_date_utils.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
-import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart'; // Đã thêm import
+import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,6 +27,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Weather? _weather;
   bool _weatherLoading = true;
+  bool _reminderDismissed = false;
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadWeather() async {
+    setState(() => _weatherLoading = true);
     try {
       final w = await WeatherApi().getCurrentWeather();
       if (mounted) setState(() => _weather = w);
@@ -41,14 +44,6 @@ class _HomePageState extends State<HomePage> {
     } finally {
       if (mounted) setState(() => _weatherLoading = false);
     }
-  }
-
-  // Tết 2027 (Đinh Mùi)
-  int _daysUntilTet() {
-    final tet2027 = DateTime(2027, 2, 17);
-    final now = DateTime.now();
-    final diff = tet2027.difference(DateTime(now.year, now.month, now.day));
-    return diff.inDays.clamp(0, 9999);
   }
 
   MainScreenState? get _mainState =>
@@ -62,7 +57,6 @@ class _HomePageState extends State<HomePage> {
     MaterialPageRoute(builder: (_) => const MapScreen()),
   );
 
-  // Đã sửa để truyền Provider sang trang mới
   void _goToChecklist() {
     final checklistVm = context.read<ChecklistViewModel>();
     Navigator.push(
@@ -94,6 +88,35 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
+  /// Kiểm tra xem có trip/checklist nào trong 24h tới không
+  List<String> _getUpcomingReminders(HomeViewModel vm) {
+    final reminders = <String>[];
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1, 23, 59);
+
+    for (final trip in vm.trips) {
+      if (!trip.isPast || trip.isToday) {
+        if (trip.startDate.isBefore(tomorrow)) {
+          for (final act in trip.activities) {
+            final actTime = DateTime(
+              trip.startDate.year,
+              trip.startDate.month,
+              trip.startDate.day,
+              act.hour,
+              act.minute,
+            );
+            if (actTime.isAfter(now) && actTime.isBefore(tomorrow)) {
+              final h = act.hour.toString().padLeft(2, '0');
+              final m = act.minute.toString().padLeft(2, '0');
+              reminders.add('$h:$m — ${act.title}');
+            }
+          }
+        }
+      }
+    }
+    return reminders;
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
@@ -102,6 +125,14 @@ class _HomePageState extends State<HomePage> {
         statusBarIconBrightness: Brightness.dark,
       ),
     );
+
+    final vm = context.watch<HomeViewModel>();
+    final reminders = _getUpcomingReminders(vm);
+    final tetInfo = TetDateUtils.nextTet();
+    final daysLeft = TetDateUtils.daysUntilNextTet();
+    final lunarYear = tetInfo.lunarYear;
+    final canChi = TetDateUtils.canChiOfYear(lunarYear);
+    final emoji = TetDateUtils.emojiOfYear(lunarYear) ?? '🎋';
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
@@ -116,7 +147,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header ─────────────────────────────────────────────────
+                // ── Header ───────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
@@ -133,7 +164,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           Text(
-                            'ViVu Tết 2027',
+                            'ViVu Tết $lunarYear',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
@@ -143,40 +174,84 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const Spacer(),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.06),
-                              blurRadius: 8,
+                      // Nút chuông — mở reminder sheet nếu có
+                      GestureDetector(
+                        onTap: reminders.isEmpty
+                            ? null
+                            : () => _showReminderSheet(reminders),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                reminders.isEmpty
+                                    ? Icons.notifications_outlined
+                                    : Icons.notifications_active_rounded,
+                                color: reminders.isEmpty
+                                    ? AppColors.brownDeep
+                                    : AppColors.primary,
+                                size: 22,
+                              ),
                             ),
+                            if (reminders.isNotEmpty)
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
-                        ),
-                        child: const Icon(
-                          Icons.notifications_outlined,
-                          color: AppColors.brownDeep,
-                          size: 22,
                         ),
                       ),
                     ],
                   ),
                 ),
 
+                // ── Banner nhắc nhở trong app (nếu có & chưa dismiss) ──
+                if (reminders.isNotEmpty && !_reminderDismissed)
+                  _ReminderBanner(
+                    count: reminders.length,
+                    firstItem: reminders.first,
+                    onTap: () => _showReminderSheet(reminders),
+                    onDismiss: () => setState(() => _reminderDismissed = true),
+                  ),
+
                 const SizedBox(height: 16),
 
+                // ── Hero Banner đếm ngược Tết ─────────────────────────
                 _HeroBanner(
-                  daysLeft: _daysUntilTet(),
+                  daysLeft: daysLeft,
+                  lunarYear: lunarYear,
+                  canChi: canChi,
+                  tetEmoji: emoji,
                   weather: _weather,
                   weatherLoading: _weatherLoading,
                 ),
 
                 const SizedBox(height: 20),
 
-                // ── 4 nút menu ─────────────────────────────────────────────
+                // ── 4 nút menu ────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -234,15 +309,171 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  void _showReminderSheet(List<String> reminders) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Text('🔔', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  'Sắp diễn ra hôm nay',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.brownDeep,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...reminders.map(
+              (r) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withOpacity(0.15),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.schedule_rounded,
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      r,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.brownDeep,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-// ── Hero Banner ────────────────────────────────────────────────────────────────
+// ── Reminder Banner ───────────────────────────────────────────────────────────
+class _ReminderBanner extends StatelessWidget {
+  final int count;
+  final String firstItem;
+  final VoidCallback onTap;
+  final VoidCallback onDismiss;
+
+  const _ReminderBanner({
+    required this.count,
+    required this.firstItem,
+    required this.onTap,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            const Text('🔔', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    count == 1
+                        ? 'Có 1 hoạt động sắp diễn ra'
+                        : 'Có $count hoạt động sắp diễn ra hôm nay',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  Text(
+                    firstItem,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: AppColors.brownMid,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onDismiss,
+              child: Icon(
+                Icons.close_rounded,
+                size: 18,
+                color: Colors.grey.shade400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Hero Banner ───────────────────────────────────────────────────────────────
 class _HeroBanner extends StatelessWidget {
   final int daysLeft;
+  final int lunarYear;
+  final String canChi;
+  final String tetEmoji;
   final Weather? weather;
   final bool weatherLoading;
+
   const _HeroBanner({
     required this.daysLeft,
+    required this.lunarYear,
+    required this.canChi,
+    required this.tetEmoji,
     required this.weather,
     required this.weatherLoading,
   });
@@ -272,14 +503,10 @@ class _HeroBanner extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(
-                        Icons.celebration_rounded,
-                        color: Colors.white,
-                        size: 14,
-                      ),
+                      Text(tetEmoji, style: const TextStyle(fontSize: 14)),
                       const SizedBox(width: 4),
                       Text(
-                        'ĐẾM NGƯỢC TẾT 2027',
+                        'ĐẾM NGƯỢC TẾT $lunarYear',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -307,7 +534,7 @@ class _HeroBanner extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'đến Tết Đinh Mùi 2027',
+                    'đến Tết $canChi $lunarYear',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -365,6 +592,7 @@ class _HeroBanner extends StatelessWidget {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        // Tên thành phố động từ GPS/geocoding
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -374,13 +602,17 @@ class _HeroBanner extends StatelessWidget {
                               size: 11,
                             ),
                             const SizedBox(width: 2),
-                            Text(
-                              'HÀ NỘI',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white.withOpacity(0.85),
-                                letterSpacing: 1,
+                            Flexible(
+                              child: Text(
+                                weather!.cityName.toUpperCase(),
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white.withOpacity(0.85),
+                                  letterSpacing: 0.8,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
                               ),
                             ),
                           ],
@@ -423,7 +655,7 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ── Menu Button ────────────────────────────────────────────────────────────────
+// ── Menu Button ───────────────────────────────────────────────────────────────
 class _MenuBtn extends StatelessWidget {
   final IconData icon;
   final String line1;
@@ -483,7 +715,7 @@ class _MenuBtn extends StatelessWidget {
   }
 }
 
-// ── Trips Section ──────────────────────────────────────────────────────────────
+// ── Trips Section ─────────────────────────────────────────────────────────────
 class _TripsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   final ValueChanged<DateTime> onTapCard;

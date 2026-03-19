@@ -14,8 +14,7 @@ class CustomBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIX: Thay Bản đồ + Checklist → Thử Vận May + Cầu May
-    // 4 tab: Lịch trình | Thử Vận May | (FAB) | Cầu May | Cá nhân
+    // 4 tab: Lịch trình | Bầu Cua | (FAB) | Cầu May | Cá nhân
     const tabs = [
       _TabItem(
         icon: Icons.calendar_today_outlined,
@@ -25,7 +24,7 @@ class CustomBottomNav extends StatelessWidget {
       _TabItem(
         icon: Icons.casino_outlined,
         activeIcon: Icons.casino_rounded,
-        label: 'Vận May',
+        label: 'Bầu Cua',
       ),
       _TabItem(
         icon: Icons.local_fire_department_outlined,

@@ -24,9 +24,7 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearSelectedTripDate() {
-    _selectedTripDate = null;
-  }
+  void clearSelectedTripDate() => _selectedTripDate = null;
 
   Future<void> loadTrips() async {
     _isLoading = true;
