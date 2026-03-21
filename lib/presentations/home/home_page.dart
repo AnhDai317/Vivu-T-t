@@ -70,10 +70,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _goToDestinations() => Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const DestinationsScreen()),
-  );
+  /// FIX: Truyền HomeViewModel xuống DestinationsScreen qua Provider
+  void _goToDestinations() {
+    final homeVm = context.read<HomeViewModel>();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: homeVm,
+          child: const DestinationsScreen(),
+        ),
+      ),
+    );
+  }
 
   Future<void> _openMaps(SpringDestination dest) async {
     final q = Uri.encodeComponent(dest.name);
@@ -88,12 +97,10 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
-  /// Kiểm tra xem có trip/checklist nào trong 24h tới không
   List<String> _getUpcomingReminders(HomeViewModel vm) {
     final reminders = <String>[];
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1, 23, 59);
-
     for (final trip in vm.trips) {
       if (!trip.isPast || trip.isToday) {
         if (trip.startDate.isBefore(tomorrow)) {
@@ -147,7 +154,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header ───────────────────────────────────────────
+                // ── Header ─────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
@@ -174,7 +181,6 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const Spacer(),
-                      // Nút chuông — mở reminder sheet nếu có
                       GestureDetector(
                         onTap: reminders.isEmpty
                             ? null
@@ -228,7 +234,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
 
-                // ── Banner nhắc nhở trong app (nếu có & chưa dismiss) ──
                 if (reminders.isNotEmpty && !_reminderDismissed)
                   _ReminderBanner(
                     count: reminders.length,
@@ -239,7 +244,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 16),
 
-                // ── Hero Banner đếm ngược Tết ─────────────────────────
                 _HeroBanner(
                   daysLeft: daysLeft,
                   lunarYear: lunarYear,
@@ -251,7 +255,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
-                // ── 4 nút menu ────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -299,6 +302,7 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 28),
 
                 _DestinationsSection(
+                  // FIX: dùng callback qua _goToDestinations để có Provider
                   onViewAll: _goToDestinations,
                   onOpenMaps: _openMaps,
                 ),
@@ -396,7 +400,6 @@ class _ReminderBanner extends StatelessWidget {
   final String firstItem;
   final VoidCallback onTap;
   final VoidCallback onDismiss;
-
   const _ReminderBanner({
     required this.count,
     required this.firstItem,
@@ -468,7 +471,6 @@ class _HeroBanner extends StatelessWidget {
   final String tetEmoji;
   final Weather? weather;
   final bool weatherLoading;
-
   const _HeroBanner({
     required this.daysLeft,
     required this.lunarYear,
@@ -592,7 +594,6 @@ class _HeroBanner extends StatelessWidget {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // Tên thành phố động từ GPS/geocoding
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -658,8 +659,7 @@ class _HeroBanner extends StatelessWidget {
 // ── Menu Button ───────────────────────────────────────────────────────────────
 class _MenuBtn extends StatelessWidget {
   final IconData icon;
-  final String line1;
-  final String line2;
+  final String line1, line2;
   final Color color;
   final VoidCallback onTap;
   const _MenuBtn({

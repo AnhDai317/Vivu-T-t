@@ -20,4 +20,14 @@ abstract class ITripRepository {
     required String tripId,
     required String activityId,
   });
+
+  /// Thêm 1 activity đơn lẻ vào trip đã tồn tại
+  Future<void> addActivity({
+    required String tripId,
+    required String activityId,
+    required int hour,
+    required int minute,
+    required String title,
+    required String location,
+  });
 }

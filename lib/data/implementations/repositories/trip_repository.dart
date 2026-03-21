@@ -117,4 +117,24 @@ class TripRepository implements ITripRepository {
       whereArgs: [activityId, tripId],
     );
   }
+
+  @override
+  Future<void> addActivity({
+    required String tripId,
+    required String activityId,
+    required int hour,
+    required int minute,
+    required String title,
+    required String location,
+  }) async {
+    final db = await database.database;
+    await db.insert('trip_activities', {
+      'id': activityId,
+      'trip_id': tripId,
+      'hour': hour,
+      'minute': minute,
+      'title': title,
+      'location': location,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
 }

@@ -103,4 +103,29 @@ class HomeViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Thêm activity từ màn hình Destinations vào một trip cụ thể
+  Future<void> addActivityFromDestination({
+    required String tripId,
+    required String activityTitle,
+    required String location,
+    required int hour,
+    required int minute,
+  }) async {
+    try {
+      final id = DateTime.now().microsecondsSinceEpoch.toString();
+      await _tripRepository.addActivity(
+        tripId: tripId,
+        activityId: id,
+        hour: hour,
+        minute: minute,
+        title: activityTitle,
+        location: location,
+      );
+      await loadTrips();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
 }

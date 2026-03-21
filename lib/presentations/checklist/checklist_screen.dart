@@ -197,7 +197,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
   }
 
-  /// Xoá item với Undo SnackBar — KHÔNG hiện confirm dialog
   Future<void> _deleteWithUndo(
     ChecklistViewModel vm,
     ChecklistCategory cat,
@@ -262,6 +261,8 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
+      // FIX: Không có floatingActionButton ở đây
+      // Nút Thêm đã nằm trong header row bên cạnh tên category
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -337,7 +338,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  // Tab theo ngày
                   Expanded(
                     child: GestureDetector(
                       onTap: vm.isGeneralMode ? () => vm.switchToDate() : null,
@@ -382,7 +382,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Tab Công việc chung
                   Expanded(
                     child: GestureDetector(
                       onTap: !vm.isGeneralMode
@@ -434,7 +433,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
             const SizedBox(height: 8),
 
-            // ── Date picker (chỉ hiện khi tab Theo ngày) ─────────────
+            // ── Date picker / Info label ──────────────────────────────
             if (!vm.isGeneralMode)
               GestureDetector(
                 onTap: () => _pickDate(vm),
@@ -499,7 +498,6 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 ),
               )
             else
-              // Label "Công việc chung"
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
@@ -640,7 +638,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
             const SizedBox(height: 8),
 
-            // ── Tiêu đề + nút Thêm ───────────────────────────────────
+            // ── Tiêu đề category + NÚT THÊM (chỉ 1 nút duy nhất) ────
             if (cat != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -655,6 +653,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         color: AppColors.brownDeep,
                       ),
                     ),
+                    // Đây là NÚT THÊM DUY NHẤT — không có FAB nào khác
                     GestureDetector(
                       onTap: () => _showAddDialog(vm, cat),
                       child: Container(
@@ -705,11 +704,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               child: cat == null
                   ? const SizedBox()
                   : vm.itemsOfCategory(cat.id).isEmpty
-                  ? _EmptyDay(
-                      onAdd: () => _showAddDialog(vm, cat),
-                      color: catColor,
-                      isGeneral: vm.isGeneralMode,
-                    )
+                  ? _EmptyDay(color: catColor, isGeneral: vm.isGeneralMode)
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
                       itemCount: vm.itemsOfCategory(cat.id).length,
@@ -775,7 +770,6 @@ class _ChecklistItemTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Checkbox
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 24,
@@ -793,8 +787,6 @@ class _ChecklistItemTile extends StatelessWidget {
                   : null,
             ),
             const SizedBox(width: 14),
-
-            // Title
             Expanded(
               child: Text(
                 item.title,
@@ -808,8 +800,6 @@ class _ChecklistItemTile extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Nút ✏️
             GestureDetector(
               onTap: onEdit,
               child: Container(
@@ -823,8 +813,6 @@ class _ChecklistItemTile extends StatelessWidget {
                 child: Icon(Icons.edit_outlined, size: 15, color: catColor),
               ),
             ),
-
-            // Nút 🗑
             GestureDetector(
               onTap: onDelete,
               child: Container(
@@ -850,14 +838,9 @@ class _ChecklistItemTile extends StatelessWidget {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 class _EmptyDay extends StatelessWidget {
-  final VoidCallback onAdd;
   final Color color;
   final bool isGeneral;
-  const _EmptyDay({
-    required this.onAdd,
-    required this.color,
-    required this.isGeneral,
-  });
+  const _EmptyDay({required this.color, required this.isGeneral});
 
   @override
   Widget build(BuildContext context) {
@@ -878,31 +861,31 @@ class _EmptyDay extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             isGeneral
-                ? 'Thêm việc cần làm không gắn ngày cụ thể'
+                ? 'Thêm việc không gắn ngày cụ thể'
                 : 'Thêm việc cần chuẩn bị cho ngày này',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               color: Colors.grey.shade500,
             ),
           ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: onAdd,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.arrow_upward_rounded,
+                size: 14,
+                color: Colors.grey.shade400,
               ),
-            ),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: Text(
-              'Thêm việc',
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
+              const SizedBox(width: 4),
+              Text(
+                'Bấm nút "Thêm" ở trên để bắt đầu',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: Colors.grey.shade400,
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

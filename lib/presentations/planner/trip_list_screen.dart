@@ -8,10 +8,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:vivu_tet/data/implementations/api/weather_api.dart';
 import 'package:vivu_tet/domain/entities/trip.dart';
 import 'package:vivu_tet/domain/entities/trip_activity.dart';
+import 'package:vivu_tet/domain/entities/weather.dart';
+import 'package:vivu_tet/presentations/checklist/checklist_screen.dart';
 import 'package:vivu_tet/presentations/planner/create_trip_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
+import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
 
 class TripListScreen extends StatefulWidget {
@@ -25,6 +30,10 @@ class TripListScreen extends StatefulWidget {
 class _TripListScreenState extends State<TripListScreen> {
   int _selectedIndex = 0;
   final _shareKey = GlobalKey();
+
+  // Cache forecast theo trip id
+  final Map<String, Weather?> _forecastCache = {};
+  final _weatherApi = WeatherApi();
 
   @override
   void initState() {
@@ -80,6 +89,43 @@ class _TripListScreenState extends State<TripListScreen> {
     if (idx >= 0 && mounted) setState(() => _selectedIndex = idx);
   }
 
+  /// Mở Google Maps với tên địa điểm
+  Future<void> _openMapsForLocation(String location) async {
+    if (location.trim().isEmpty) return;
+    final q = Uri.encodeComponent(location.trim());
+    final gmapsApp = Uri.parse('google.navigation:q=$q&mode=d');
+    final gmapsWeb = Uri.parse('https://www.google.com/maps/search/$q');
+    try {
+      if (await canLaunchUrl(gmapsApp)) {
+        await launchUrl(gmapsApp);
+      } else {
+        await launchUrl(gmapsWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
+
+  /// Mở Checklist và set ngày = ngày của trip
+  void _openPackingList(Trip trip) {
+    final checklistVm = context.read<ChecklistViewModel>();
+    checklistVm.selectDate(trip.startDate); // set đúng ngày trip
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: checklistVm,
+          child: const ChecklistScreen(),
+        ),
+      ),
+    );
+  }
+
+  /// Load forecast cho trip nếu chưa cache
+  Future<void> _loadForecast(Trip trip) async {
+    if (_forecastCache.containsKey(trip.id)) return;
+    final w = await _weatherApi.getForecastForDate(trip.startDate);
+    if (mounted) setState(() => _forecastCache[trip.id] = w);
+  }
+
   void _handleBack() {
     if (widget.onBack != null) {
       widget.onBack!();
@@ -88,11 +134,11 @@ class _TripListScreenState extends State<TripListScreen> {
     }
   }
 
-  // ── Sửa tên kế hoạch ─────────────────────────────────────────────────────
-  void _showEditTitleDialog(BuildContext context, HomeViewModel vm, Trip trip) {
+  // ── Dialog sửa TÊN kế hoạch ──────────────────────────────────────────────
+  void _showEditTitleDialog(BuildContext ctx, HomeViewModel vm, Trip trip) {
     final ctrl = TextEditingController(text: trip.title);
     showDialog(
-      context: context,
+      context: ctx,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -129,7 +175,7 @@ class _TripListScreenState extends State<TripListScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: Text(
               'HỦY',
               style: GoogleFonts.plusJakartaSans(
@@ -146,10 +192,10 @@ class _TripListScreenState extends State<TripListScreen> {
               ),
             ),
             onPressed: () async {
-              final newTitle = ctrl.text.trim();
-              if (newTitle.isEmpty) return;
-              Navigator.pop(context);
-              await vm.updateTripTitle(tripId: trip.id, newTitle: newTitle);
+              final t = ctrl.text.trim();
+              if (t.isEmpty) return;
+              Navigator.pop(ctx);
+              await vm.updateTripTitle(tripId: trip.id, newTitle: t);
             },
             child: Text(
               'LƯU',
@@ -164,9 +210,9 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Sửa activity ─────────────────────────────────────────────────────────
+  // ── Dialog sửa activity ───────────────────────────────────────────────────
   void _showEditActivityDialog(
-    BuildContext context,
+    BuildContext ctx,
     HomeViewModel vm,
     Trip trip,
     TripActivity act,
@@ -176,9 +222,9 @@ class _TripListScreenState extends State<TripListScreen> {
     final locationCtrl = TextEditingController(text: act.location);
 
     showDialog(
-      context: context,
+      context: ctx,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
+        builder: (c, setS) => AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -201,7 +247,7 @@ class _TripListScreenState extends State<TripListScreen> {
                     color: AppColors.primary,
                   ),
                   title: Text(
-                    'Thời gian: ${selectedTime.format(ctx)}',
+                    'Thời gian: ${selectedTime.format(c)}',
                     style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w700,
                     ),
@@ -209,7 +255,7 @@ class _TripListScreenState extends State<TripListScreen> {
                   trailing: const Icon(Icons.edit, size: 18),
                   onTap: () async {
                     final t = await showTimePicker(
-                      context: ctx,
+                      context: c,
                       initialTime: selectedTime,
                     );
                     if (t != null) setS(() => selectedTime = t);
@@ -248,7 +294,7 @@ class _TripListScreenState extends State<TripListScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => Navigator.pop(c),
               child: const Text('HỦY', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
@@ -260,7 +306,7 @@ class _TripListScreenState extends State<TripListScreen> {
               ),
               onPressed: () async {
                 if (titleCtrl.text.trim().isEmpty) return;
-                Navigator.pop(ctx);
+                Navigator.pop(c);
                 await vm.updateActivity(
                   tripId: trip.id,
                   activityId: act.id,
@@ -284,15 +330,15 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Xoá activity (có confirm) ─────────────────────────────────────────────
+  // ── Confirm xoá activity ──────────────────────────────────────────────────
   void _confirmDeleteActivity(
-    BuildContext context,
+    BuildContext ctx,
     HomeViewModel vm,
     Trip trip,
     TripActivity act,
   ) {
     showDialog(
-      context: context,
+      context: ctx,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -312,7 +358,7 @@ class _TripListScreenState extends State<TripListScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Huỷ',
               style: GoogleFonts.plusJakartaSans(
@@ -329,7 +375,7 @@ class _TripListScreenState extends State<TripListScreen> {
               ),
             ),
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               await vm.deleteActivity(tripId: trip.id, activityId: act.id);
             },
             child: Text(
@@ -345,9 +391,10 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
+  // ── Share ─────────────────────────────────────────────────────────────────
   void _shareAsText(Trip trip) {
     final buf = StringBuffer();
-    buf.writeln('🎋 KẾ HOẠCH TẾT 2027 — ${trip.title.toUpperCase()}');
+    buf.writeln('🌸 Lịch trình Du Xuân — ${trip.title} 🌸');
     buf.writeln(
       '📅 ${trip.startDate.day}/${trip.startDate.month}/${trip.startDate.year}',
     );
@@ -358,12 +405,12 @@ class _TripListScreenState extends State<TripListScreen> {
       for (final act in trip.activities) {
         final h = act.hour.toString().padLeft(2, '0');
         final m = act.minute.toString().padLeft(2, '0');
-        buf.writeln('⏰ $h:$m  ${act.title}');
+        buf.writeln('🕐 $h:$m  ${act.title}');
         if (act.location.isNotEmpty) buf.writeln('   📍 ${act.location}');
       }
     }
     buf.writeln('');
-    buf.writeln('📱 Tạo bởi ViVu Tết 2027');
+    buf.writeln('📱 Tạo bởi ViVu Tết 2027 🎋');
     Share.share(buf.toString(), subject: 'Kế hoạch: ${trip.title}');
   }
 
@@ -382,7 +429,7 @@ class _TripListScreenState extends State<TripListScreen> {
       await file.writeAsBytes(bytes);
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: '🎋 ${trip.title} — ViVu Tết 2027');
+      ], text: '🌸 ${trip.title} — ViVu Tết 2027');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -401,14 +448,14 @@ class _TripListScreenState extends State<TripListScreen> {
 
   void _copyToClipboard(Trip trip) {
     final buf = StringBuffer();
-    buf.writeln('🎋 ${trip.title}');
+    buf.writeln('🌸 ${trip.title}');
     buf.writeln(
       '📅 ${trip.startDate.day}/${trip.startDate.month}/${trip.startDate.year}',
     );
     for (final act in trip.activities) {
       final h = act.hour.toString().padLeft(2, '0');
       final m = act.minute.toString().padLeft(2, '0');
-      buf.writeln('⏰ $h:$m  ${act.title}');
+      buf.writeln('🕐 $h:$m  ${act.title}');
     }
     Clipboard.setData(ClipboardData(text: buf.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -568,6 +615,11 @@ class _TripListScreenState extends State<TripListScreen> {
     }
 
     final selectedTrip = allTrips.isNotEmpty ? allTrips[_selectedIndex] : null;
+
+    // Load forecast khi có trip được chọn
+    if (selectedTrip != null) {
+      _loadForecast(selectedTrip);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
@@ -732,6 +784,7 @@ class _TripListScreenState extends State<TripListScreen> {
                       key: _shareKey,
                       child: _DayDetailView(
                         trip: selectedTrip!,
+                        forecast: _forecastCache[selectedTrip.id],
                         onDeleteTrip: () =>
                             _confirmDeleteTrip(vm, selectedTrip),
                         onEditTitle: () =>
@@ -748,6 +801,9 @@ class _TripListScreenState extends State<TripListScreen> {
                           selectedTrip,
                           act,
                         ),
+                        onOpenMaps: (location) =>
+                            _openMapsForLocation(location),
+                        onPackingList: () => _openPackingList(selectedTrip),
                       ),
                     ),
             ),
@@ -761,17 +817,23 @@ class _TripListScreenState extends State<TripListScreen> {
 // ── Day Detail View ────────────────────────────────────────────────────────────
 class _DayDetailView extends StatelessWidget {
   final Trip trip;
+  final Weather? forecast;
   final VoidCallback onDeleteTrip;
   final VoidCallback onEditTitle;
   final void Function(TripActivity) onEditActivity;
-  final void Function(TripActivity) onDeleteActivity; // ← mới
+  final void Function(TripActivity) onDeleteActivity;
+  final void Function(String location) onOpenMaps; // ← mới
+  final VoidCallback onPackingList; // ← mới
 
   const _DayDetailView({
     required this.trip,
+    required this.forecast,
     required this.onDeleteTrip,
     required this.onEditTitle,
     required this.onEditActivity,
     required this.onDeleteActivity,
+    required this.onOpenMaps,
+    required this.onPackingList,
   });
 
   String _fmtDate(DateTime d) {
@@ -787,6 +849,20 @@ class _DayDetailView extends StatelessWidget {
     return '${w[d.weekday % 7]}, ${d.day}/${d.month}/${d.year}';
   }
 
+  /// Tính phút gap giữa 2 activity
+  int _gapMinutes(TripActivity a, TripActivity b) {
+    final aMin = a.hour * 60 + a.minute;
+    final bMin = b.hour * 60 + b.minute;
+    return bMin - aMin;
+  }
+
+  String _fmtGap(int minutes) {
+    if (minutes < 60) return '$minutes phút';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '$h giờ' : '$h giờ $m phút';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPast = trip.isPast && !trip.isToday;
@@ -796,7 +872,7 @@ class _DayDetailView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Trip header card ──────────────────────────────────────
+          // ── Trip header card ────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -824,7 +900,6 @@ class _DayDetailView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Badge ngày
                       Row(
                         children: [
                           Container(
@@ -867,6 +942,44 @@ class _DayDetailView extends StatelessWidget {
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                 ),
+                              ),
+                            ),
+                          ],
+                          // ── Forecast thời tiết của ngày trip ────────────
+                          if (forecast != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.blue.shade200,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    forecast!.icon,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    forecast!.maxTemp != null
+                                        ? '${forecast!.minTemp!.toStringAsFixed(0)}–${forecast!.maxTemp!.toStringAsFixed(0)}°C'
+                                        : '${forecast!.temperature.toStringAsFixed(0)}°C',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -929,7 +1042,6 @@ class _DayDetailView extends StatelessWidget {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 2),
                       Text(
                         _fmtDate(trip.startDate),
@@ -938,6 +1050,44 @@ class _DayDetailView extends StatelessWidget {
                           color: Colors.grey.shade500,
                         ),
                       ),
+
+                      // Cảnh báo thời tiết nếu mưa
+                      if (forecast != null &&
+                          (forecast!.description.contains('Mưa') ||
+                              forecast!.description.contains('Dông') ||
+                              forecast!.description.contains('Sương'))) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.orange.shade200,
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('⚠️', style: TextStyle(fontSize: 13)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${forecast!.description} — Nhớ mang ô/áo mưa nhé!',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -955,7 +1105,7 @@ class _DayDetailView extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // ── Activities timeline ───────────────────────────────────
+          // ── Activities timeline ─────────────────────────────────────
           if (trip.activities.isEmpty)
             Container(
               width: double.infinity,
@@ -998,205 +1148,379 @@ class _DayDetailView extends StatelessWidget {
                   ),
                 ),
                 Column(
-                  children: trip.activities.asMap().entries.map((e) {
-                    final i = e.key;
-                    final act = e.value;
-                    final isFirst = i == 0;
+                  children: () {
+                    // Build list xen kẽ activity + time gap
+                    final widgets = <Widget>[];
+                    final acts = trip.activities;
+                    for (int i = 0; i < acts.length; i++) {
+                      final act = acts[i];
+                      final isFirst = i == 0;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Dot
-                          Container(
-                            width: 42,
-                            alignment: Alignment.topCenter,
-                            padding: const EdgeInsets.only(top: 14),
-                            child: Container(
-                              width: isFirst ? 14 : 10,
-                              height: isFirst ? 14 : 10,
-                              decoration: BoxDecoration(
-                                color: isPast
-                                    ? Colors.grey.shade300
-                                    : isFirst
-                                    ? AppColors.primary
-                                    : AppColors.primary.withOpacity(0.4),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.warmCream,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Card
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.fromLTRB(
-                                14,
-                                12,
-                                10,
-                                12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isPast
-                                    ? Colors.white.withOpacity(0.55)
-                                    : isFirst
-                                    ? Colors.white
-                                    : Colors.white.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isFirst && !isPast
-                                      ? AppColors.primary.withOpacity(0.2)
-                                      : Colors.grey.shade100,
-                                ),
-                                boxShadow: isFirst && !isPast
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.04),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  // Giờ
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isPast
-                                          ? Colors.grey.shade100
-                                          : AppColors.primary.withOpacity(0.08),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: isPast
-                                            ? Colors.grey.shade400
-                                            : AppColors.primary,
-                                      ),
+                      // Activity card
+                      widgets.add(
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Dot
+                              Container(
+                                width: 42,
+                                alignment: Alignment.topCenter,
+                                padding: const EdgeInsets.only(top: 14),
+                                child: Container(
+                                  width: isFirst ? 14 : 10,
+                                  height: isFirst ? 14 : 10,
+                                  decoration: BoxDecoration(
+                                    color: isPast
+                                        ? Colors.grey.shade300
+                                        : isFirst
+                                        ? AppColors.primary
+                                        : AppColors.primary.withOpacity(0.4),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.warmCream,
+                                      width: 2,
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                ),
+                              ),
 
-                                  // Title + location
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          act.title,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: isPast
-                                                ? Colors.grey.shade500
-                                                : AppColors.brownDeep,
+                              // Card
+                              Expanded(
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    14,
+                                    12,
+                                    10,
+                                    12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isPast
+                                        ? Colors.white.withOpacity(0.55)
+                                        : isFirst
+                                        ? Colors.white
+                                        : Colors.white.withOpacity(0.85),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isFirst && !isPast
+                                          ? AppColors.primary.withOpacity(0.2)
+                                          : Colors.grey.shade100,
+                                    ),
+                                    boxShadow: isFirst && !isPast
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.04,
+                                              ),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isPast
+                                              ? Colors.grey.shade100
+                                              : AppColors.primary.withOpacity(
+                                                  0.08,
+                                                ),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
                                         ),
-                                        if (act.location.isNotEmpty) ...[
-                                          const SizedBox(height: 3),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.location_on,
-                                                size: 12,
-                                                color: Colors.grey.shade400,
-                                              ),
-                                              const SizedBox(width: 3),
-                                              Expanded(
-                                                child: Text(
-                                                  act.location,
-                                                  style:
-                                                      GoogleFonts.plusJakartaSans(
-                                                        fontSize: 11,
-                                                        color: Colors
-                                                            .grey
-                                                            .shade500,
+                                        child: Text(
+                                          '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: isPast
+                                                ? Colors.grey.shade400
+                                                : AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              act.title,
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isPast
+                                                        ? Colors.grey.shade500
+                                                        : AppColors.brownDeep,
+                                                  ),
+                                            ),
+                                            if (act.location.isNotEmpty) ...[
+                                              const SizedBox(height: 3),
+                                              GestureDetector(
+                                                onTap: () =>
+                                                    onOpenMaps(act.location),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.location_on,
+                                                      size: 12,
+                                                      color: AppColors.primary
+                                                          .withOpacity(0.7),
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    Expanded(
+                                                      child: Text(
+                                                        act.location,
+                                                        style: GoogleFonts.plusJakartaSans(
+                                                          fontSize: 11,
+                                                          color: AppColors
+                                                              .primary
+                                                              .withOpacity(0.8),
+                                                          decoration:
+                                                              TextDecoration
+                                                                  .underline,
+                                                          decorationColor:
+                                                              AppColors.primary
+                                                                  .withOpacity(
+                                                                    0.4,
+                                                                  ),
+                                                        ),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
+                                          ],
+                                        ),
+                                      ),
+                                      // Nút ✏️
+                                      GestureDetector(
+                                        onTap: () => onEditActivity(act),
+                                        child: Container(
+                                          width: 30,
+                                          height: 30,
+                                          margin: const EdgeInsets.only(
+                                            left: 4,
                                           ),
+                                          decoration: BoxDecoration(
+                                            color: isPast
+                                                ? Colors.grey.shade100
+                                                : AppColors.primary.withOpacity(
+                                                    0.08,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.edit_outlined,
+                                            size: 14,
+                                            color: isPast
+                                                ? Colors.grey.shade400
+                                                : AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      // Nút 🗑
+                                      GestureDetector(
+                                        onTap: () => onDeleteActivity(act),
+                                        child: Container(
+                                          width: 30,
+                                          height: 30,
+                                          margin: const EdgeInsets.only(
+                                            left: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.delete_outline,
+                                            size: 14,
+                                            color: Colors.red.shade300,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+
+                      // ── Time Gap giữa 2 activities liên tiếp ─────────
+                      if (i < acts.length - 1) {
+                        final gap = _gapMinutes(act, acts[i + 1]);
+                        if (gap > 0) {
+                          widgets.add(
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  // Căn với timeline
+                                  const SizedBox(width: 42),
+                                  Expanded(
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 2,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            gap <= 30
+                                                ? '⏱'
+                                                : gap <= 90
+                                                ? '🚶'
+                                                : '🚗',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${_fmtGap(gap)} trống',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: gap < 30
+                                                  ? Colors.orange.shade600
+                                                  : Colors.grey.shade500,
+                                            ),
+                                          ),
+                                          if (gap < 30) ...[
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '· Sát giờ!',
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 10,
+                                                    color:
+                                                        Colors.orange.shade600,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                            ),
+                                          ],
                                         ],
-                                      ],
-                                    ),
-                                  ),
-
-                                  // ── Nút ✏️ sửa ───────────────────
-                                  GestureDetector(
-                                    onTap: () => onEditActivity(act),
-                                    child: Container(
-                                      width: 30,
-                                      height: 30,
-                                      margin: const EdgeInsets.only(left: 4),
-                                      decoration: BoxDecoration(
-                                        color: isPast
-                                            ? Colors.grey.shade100
-                                            : AppColors.primary.withOpacity(
-                                                0.08,
-                                              ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.edit_outlined,
-                                        size: 14,
-                                        color: isPast
-                                            ? Colors.grey.shade400
-                                            : AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // ── Nút 🗑 xoá ───────────────────
-                                  GestureDetector(
-                                    onTap: () => onDeleteActivity(act),
-                                    child: Container(
-                                      width: 30,
-                                      height: 30,
-                                      margin: const EdgeInsets.only(left: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.delete_outline,
-                                        size: 14,
-                                        color: Colors.red.shade300,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                          );
+                        }
+                      }
+                    }
+                    return widgets;
+                  }(),
                 ),
               ],
             ),
+
+          const SizedBox(height: 16),
+
+          // ── CTA: Chuẩn bị hành trang ───────────────────────────────
+          GestureDetector(
+            onTap: onPackingList,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF43A047).withOpacity(0.08),
+                    const Color(0xFF43A047).withOpacity(0.04),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF43A047).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF43A047).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.checklist_rounded,
+                      color: Color(0xFF43A047),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Chuẩn bị hành trang',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.brownDeep,
+                          ),
+                        ),
+                        Text(
+                          'Mở Checklist ngày ${trip.startDate.day}/${trip.startDate.month}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Color(0xFF43A047),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Share Option ──────────────────────────────────────────────────────────────
+// ── Reusable widgets ──────────────────────────────────────────────────────────
 class _ShareOption extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -1268,7 +1592,6 @@ class _ShareOption extends StatelessWidget {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 class _CircleBtn extends StatelessWidget {
   final IconData icon;
   final Color? color;
