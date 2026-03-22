@@ -30,4 +30,8 @@ abstract class ITripRepository {
     required String title,
     required String location,
   });
+  Future<void> reorderActivities({
+    required String tripId,
+    required List<String> orderedActivityIds,
+  });
 }

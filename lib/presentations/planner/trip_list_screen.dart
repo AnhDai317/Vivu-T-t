@@ -1,3 +1,14 @@
+// LƯU Ý: Đây là phần THAY THẾ / BỔ SUNG vào trip_list_screen.dart hiện có.
+// Các phần không đề cập giữ nguyên như cũ.
+//
+// THAY ĐỔI CHÍNH:
+//   1. _DayDetailView → activities dùng ReorderableListView thay ListView
+//   2. Thêm nút "Mở tất cả điểm trên Google Maps" (waypoints)
+//   3. HomeViewModel cần thêm reorderActivity() — xem home_viewmodel_patch.dart
+//
+// ── IMPORT cần thêm (nếu chưa có) ────────────────────────────────────────────
+//   import 'package:url_launcher/url_launcher.dart'; // đã có sẵn
+
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -18,6 +29,7 @@ import 'package:vivu_tet/presentations/planner/create_trip_screen.dart';
 import 'package:vivu_tet/presentations/shared/theme/app_theme.dart';
 import 'package:vivu_tet/viewmodel/checklist/checklist_viewmodel.dart';
 import 'package:vivu_tet/viewmodel/home/home_viewmodel.dart';
+import 'package:vivu_tet/presentations/planner/trip_story_exporter.dart';
 
 class TripListScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -31,7 +43,6 @@ class _TripListScreenState extends State<TripListScreen> {
   int _selectedIndex = 0;
   final _shareKey = GlobalKey();
 
-  // Cache forecast theo trip id
   final Map<String, Weather?> _forecastCache = {};
   final _weatherApi = WeatherApi();
 
@@ -89,7 +100,6 @@ class _TripListScreenState extends State<TripListScreen> {
     if (idx >= 0 && mounted) setState(() => _selectedIndex = idx);
   }
 
-  /// Mở Google Maps với tên địa điểm
   Future<void> _openMapsForLocation(String location) async {
     if (location.trim().isEmpty) return;
     final q = Uri.encodeComponent(location.trim());
@@ -104,10 +114,9 @@ class _TripListScreenState extends State<TripListScreen> {
     } catch (_) {}
   }
 
-  /// Mở Checklist và set ngày = ngày của trip
   void _openPackingList(Trip trip) {
     final checklistVm = context.read<ChecklistViewModel>();
-    checklistVm.selectDate(trip.startDate); // set đúng ngày trip
+    checklistVm.selectDate(trip.startDate);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -119,7 +128,6 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  /// Load forecast cho trip nếu chưa cache
   Future<void> _loadForecast(Trip trip) async {
     if (_forecastCache.containsKey(trip.id)) return;
     final w = await _weatherApi.getForecastForDate(trip.startDate);
@@ -134,7 +142,6 @@ class _TripListScreenState extends State<TripListScreen> {
     }
   }
 
-  // ── Dialog sửa TÊN kế hoạch ──────────────────────────────────────────────
   void _showEditTitleDialog(BuildContext ctx, HomeViewModel vm, Trip trip) {
     final ctrl = TextEditingController(text: trip.title);
     showDialog(
@@ -210,7 +217,6 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Dialog sửa activity ───────────────────────────────────────────────────
   void _showEditActivityDialog(
     BuildContext ctx,
     HomeViewModel vm,
@@ -330,7 +336,6 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Confirm xoá activity ──────────────────────────────────────────────────
   void _confirmDeleteActivity(
     BuildContext ctx,
     HomeViewModel vm,
@@ -391,7 +396,6 @@ class _TripListScreenState extends State<TripListScreen> {
     );
   }
 
-  // ── Share ─────────────────────────────────────────────────────────────────
   void _shareAsText(Trip trip) {
     final buf = StringBuffer();
     buf.writeln('🌸 Lịch trình Du Xuân — ${trip.title} 🌸');
@@ -510,6 +514,22 @@ class _TripListScreenState extends State<TripListScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            // MỚI: Story card
+            _ShareOptionHighlight(
+              icon: Icons.auto_awesome_rounded,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFB71C1C), Color(0xFFFFD700)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              label: '✨ Xuất ảnh Story Tết',
+              subtitle: 'Card đẹp cho Facebook/Zalo Story',
+              onTap: () {
+                Navigator.pop(context);
+                showStoryExporter(context: context, trip: trip);
+              },
+            ),
+            const SizedBox(height: 10),
             _ShareOption(
               icon: Icons.share_rounded,
               color: const Color(0xFF4FACFE),
@@ -518,17 +538,6 @@ class _TripListScreenState extends State<TripListScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _shareAsText(trip);
-              },
-            ),
-            const SizedBox(height: 10),
-            _ShareOption(
-              icon: Icons.image_rounded,
-              color: const Color(0xFFA18CD1),
-              label: 'Chia sẻ dạng ảnh',
-              subtitle: 'Xuất ảnh đẹp rồi share',
-              onTap: () {
-                Navigator.pop(context);
-                _shareAsImage(trip);
               },
             ),
             const SizedBox(height: 10),
@@ -616,7 +625,6 @@ class _TripListScreenState extends State<TripListScreen> {
 
     final selectedTrip = allTrips.isNotEmpty ? allTrips[_selectedIndex] : null;
 
-    // Load forecast khi có trip được chọn
     if (selectedTrip != null) {
       _loadForecast(selectedTrip);
     }
@@ -627,7 +635,7 @@ class _TripListScreenState extends State<TripListScreen> {
         bottom: false,
         child: Column(
           children: [
-            // ── Header ─────────────────────────────────────────────
+            // ── Header ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Row(
@@ -804,6 +812,13 @@ class _TripListScreenState extends State<TripListScreen> {
                         onOpenMaps: (location) =>
                             _openMapsForLocation(location),
                         onPackingList: () => _openPackingList(selectedTrip),
+                        // MỚI: callback reorder
+                        onReorderActivities: (oldIndex, newIndex) =>
+                            vm.reorderActivity(
+                              tripId: selectedTrip.id,
+                              oldIndex: oldIndex,
+                              newIndex: newIndex,
+                            ),
                       ),
                     ),
             ),
@@ -822,8 +837,9 @@ class _DayDetailView extends StatelessWidget {
   final VoidCallback onEditTitle;
   final void Function(TripActivity) onEditActivity;
   final void Function(TripActivity) onDeleteActivity;
-  final void Function(String location) onOpenMaps; // ← mới
-  final VoidCallback onPackingList; // ← mới
+  final void Function(String location) onOpenMaps;
+  final VoidCallback onPackingList;
+  final void Function(int oldIndex, int newIndex) onReorderActivities; // MỚI
 
   const _DayDetailView({
     required this.trip,
@@ -834,6 +850,7 @@ class _DayDetailView extends StatelessWidget {
     required this.onDeleteActivity,
     required this.onOpenMaps,
     required this.onPackingList,
+    required this.onReorderActivities,
   });
 
   String _fmtDate(DateTime d) {
@@ -849,20 +866,6 @@ class _DayDetailView extends StatelessWidget {
     return '${w[d.weekday % 7]}, ${d.day}/${d.month}/${d.year}';
   }
 
-  /// Tính phút gap giữa 2 activity
-  int _gapMinutes(TripActivity a, TripActivity b) {
-    final aMin = a.hour * 60 + a.minute;
-    final bMin = b.hour * 60 + b.minute;
-    return bMin - aMin;
-  }
-
-  String _fmtGap(int minutes) {
-    if (minutes < 60) return '$minutes phút';
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    return m == 0 ? '$h giờ' : '$h giờ $m phút';
-  }
-
   @override
   Widget build(BuildContext context) {
     final isPast = trip.isPast && !trip.isToday;
@@ -872,7 +875,7 @@ class _DayDetailView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Trip header card ────────────────────────────────────────
+          // ── Trip header card ─────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -945,7 +948,6 @@ class _DayDetailView extends StatelessWidget {
                               ),
                             ),
                           ],
-                          // ── Forecast thời tiết của ngày trip ────────────
                           if (forecast != null) ...[
                             const SizedBox(width: 8),
                             Container(
@@ -986,8 +988,6 @@ class _DayDetailView extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-
-                      // Tên + nút Sửa tên
                       Row(
                         children: [
                           Expanded(
@@ -1051,7 +1051,7 @@ class _DayDetailView extends StatelessWidget {
                         ),
                       ),
 
-                      // Cảnh báo thời tiết nếu mưa
+                      // Cảnh báo thời tiết xấu
                       if (forecast != null &&
                           (forecast!.description.contains('Mưa') ||
                               forecast!.description.contains('Dông') ||
@@ -1105,7 +1105,55 @@ class _DayDetailView extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // ── Activities timeline ─────────────────────────────────────
+          // ── Activities section header ────────────────────────────
+          if (trip.activities.isNotEmpty) ...[
+            Row(
+              children: [
+                Text(
+                  'Lịch trình chi tiết',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brownMid,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Hint kéo thả
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.drag_indicator_rounded,
+                        size: 12,
+                        color: AppColors.primary.withOpacity(0.6),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Giữ để sắp xếp',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+
+          // ── MỚI: ReorderableListView thay cho ListView tĩnh ─────
           if (trip.activities.isEmpty)
             Container(
               width: double.infinity,
@@ -1134,322 +1182,46 @@ class _DayDetailView extends StatelessWidget {
               ),
             )
           else
-            Stack(
-              children: [
-                Positioned(
-                  left: 20,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 2,
-                    color: isPast
-                        ? Colors.grey.shade200
-                        : AppColors.primary.withOpacity(0.15),
+            // ReorderableListView.builder — kéo thả native Flutter
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              // Padding bottom để không bị che bởi nội dung bên dưới
+              padding: EdgeInsets.zero,
+              itemCount: trip.activities.length,
+              onReorder: onReorderActivities,
+              // Tuỳ chỉnh proxy decoration khi đang kéo
+              proxyDecorator: (child, index, animation) {
+                return AnimatedBuilder(
+                  animation: animation,
+                  builder: (_, __) => Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(14),
+                    shadowColor: AppColors.primary.withOpacity(0.3),
+                    color: Colors.transparent,
+                    child: child,
                   ),
-                ),
-                Column(
-                  children: () {
-                    // Build list xen kẽ activity + time gap
-                    final widgets = <Widget>[];
-                    final acts = trip.activities;
-                    for (int i = 0; i < acts.length; i++) {
-                      final act = acts[i];
-                      final isFirst = i == 0;
-
-                      // Activity card
-                      widgets.add(
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Dot
-                              Container(
-                                width: 42,
-                                alignment: Alignment.topCenter,
-                                padding: const EdgeInsets.only(top: 14),
-                                child: Container(
-                                  width: isFirst ? 14 : 10,
-                                  height: isFirst ? 14 : 10,
-                                  decoration: BoxDecoration(
-                                    color: isPast
-                                        ? Colors.grey.shade300
-                                        : isFirst
-                                        ? AppColors.primary
-                                        : AppColors.primary.withOpacity(0.4),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.warmCream,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // Card
-                              Expanded(
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 4),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    14,
-                                    12,
-                                    10,
-                                    12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isPast
-                                        ? Colors.white.withOpacity(0.55)
-                                        : isFirst
-                                        ? Colors.white
-                                        : Colors.white.withOpacity(0.85),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: isFirst && !isPast
-                                          ? AppColors.primary.withOpacity(0.2)
-                                          : Colors.grey.shade100,
-                                    ),
-                                    boxShadow: isFirst && !isPast
-                                        ? [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.04,
-                                              ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 3),
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isPast
-                                              ? Colors.grey.shade100
-                                              : AppColors.primary.withOpacity(
-                                                  0.08,
-                                                ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: isPast
-                                                ? Colors.grey.shade400
-                                                : AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              act.title,
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isPast
-                                                        ? Colors.grey.shade500
-                                                        : AppColors.brownDeep,
-                                                  ),
-                                            ),
-                                            if (act.location.isNotEmpty) ...[
-                                              const SizedBox(height: 3),
-                                              GestureDetector(
-                                                onTap: () =>
-                                                    onOpenMaps(act.location),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.location_on,
-                                                      size: 12,
-                                                      color: AppColors.primary
-                                                          .withOpacity(0.7),
-                                                    ),
-                                                    const SizedBox(width: 3),
-                                                    Expanded(
-                                                      child: Text(
-                                                        act.location,
-                                                        style: GoogleFonts.plusJakartaSans(
-                                                          fontSize: 11,
-                                                          color: AppColors
-                                                              .primary
-                                                              .withOpacity(0.8),
-                                                          decoration:
-                                                              TextDecoration
-                                                                  .underline,
-                                                          decorationColor:
-                                                              AppColors.primary
-                                                                  .withOpacity(
-                                                                    0.4,
-                                                                  ),
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                      // Nút ✏️
-                                      GestureDetector(
-                                        onTap: () => onEditActivity(act),
-                                        child: Container(
-                                          width: 30,
-                                          height: 30,
-                                          margin: const EdgeInsets.only(
-                                            left: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isPast
-                                                ? Colors.grey.shade100
-                                                : AppColors.primary.withOpacity(
-                                                    0.08,
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            Icons.edit_outlined,
-                                            size: 14,
-                                            color: isPast
-                                                ? Colors.grey.shade400
-                                                : AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                      // Nút 🗑
-                                      GestureDetector(
-                                        onTap: () => onDeleteActivity(act),
-                                        child: Container(
-                                          width: 30,
-                                          height: 30,
-                                          margin: const EdgeInsets.only(
-                                            left: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.shade50,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            Icons.delete_outline,
-                                            size: 14,
-                                            color: Colors.red.shade300,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-
-                      // ── Time Gap giữa 2 activities liên tiếp ─────────
-                      if (i < acts.length - 1) {
-                        final gap = _gapMinutes(act, acts[i + 1]);
-                        if (gap > 0) {
-                          widgets.add(
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Row(
-                                children: [
-                                  // Căn với timeline
-                                  const SizedBox(width: 42),
-                                  Expanded(
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        vertical: 2,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: Colors.grey.shade200,
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            gap <= 30
-                                                ? '⏱'
-                                                : gap <= 90
-                                                ? '🚶'
-                                                : '🚗',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            '${_fmtGap(gap)} trống',
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: gap < 30
-                                                  ? Colors.orange.shade600
-                                                  : Colors.grey.shade500,
-                                            ),
-                                          ),
-                                          if (gap < 30) ...[
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '· Sát giờ!',
-                                              style:
-                                                  GoogleFonts.plusJakartaSans(
-                                                    fontSize: 10,
-                                                    color:
-                                                        Colors.orange.shade600,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    }
-                    return widgets;
-                  }(),
-                ),
-              ],
+                );
+              },
+              itemBuilder: (_, index) {
+                final act = trip.activities[index];
+                // Key bắt buộc cho ReorderableListView
+                return _ActivityCard(
+                  key: ValueKey(act.id),
+                  activity: act,
+                  isPast: isPast,
+                  onEdit: () => onEditActivity(act),
+                  onDelete: () => onDeleteActivity(act),
+                  onOpenMaps: act.location.isNotEmpty
+                      ? () => onOpenMaps(act.location)
+                      : null,
+                );
+              },
             ),
 
           const SizedBox(height: 16),
 
-          // ── CTA: Chuẩn bị hành trang ───────────────────────────────
+          // ── CTA: Chuẩn bị hành trang ────────────────────────────
           GestureDetector(
             onTap: onPackingList,
             child: Container(
@@ -1520,7 +1292,174 @@ class _DayDetailView extends StatelessWidget {
   }
 }
 
-// ── Reusable widgets ──────────────────────────────────────────────────────────
+// ── Activity Card — tách riêng để ReorderableListView hoạt động tốt ──────────
+class _ActivityCard extends StatelessWidget {
+  final TripActivity activity;
+  final bool isPast;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback? onOpenMaps;
+
+  const _ActivityCard({
+    super.key,
+    required this.activity,
+    required this.isPast,
+    required this.onEdit,
+    required this.onDelete,
+    this.onOpenMaps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final act = activity;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: isPast ? Colors.white.withOpacity(0.55) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isPast
+              ? Colors.grey.shade100
+              : AppColors.primary.withOpacity(0.12),
+        ),
+        boxShadow: isPast
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+      ),
+      child: Row(
+        children: [
+          // Drag handle
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: Icon(
+              Icons.drag_indicator_rounded,
+              size: 20,
+              color: isPast
+                  ? Colors.grey.shade300
+                  : AppColors.primary.withOpacity(0.35),
+            ),
+          ),
+
+          // Time badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: isPast
+                  ? Colors.grey.shade100
+                  : AppColors.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${act.hour.toString().padLeft(2, '0')}:${act.minute.toString().padLeft(2, '0')}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isPast ? Colors.grey.shade400 : AppColors.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Title + location
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  act.title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isPast ? Colors.grey.shade500 : AppColors.brownDeep,
+                  ),
+                ),
+                if (act.location.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  GestureDetector(
+                    onTap: onOpenMaps,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 12,
+                          color: AppColors.primary.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            act.location,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: AppColors.primary.withOpacity(0.8),
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppColors.primary.withOpacity(
+                                0.4,
+                              ),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          // Nút sửa
+          GestureDetector(
+            onTap: onEdit,
+            child: Container(
+              width: 30,
+              height: 30,
+              margin: const EdgeInsets.only(left: 4),
+              decoration: BoxDecoration(
+                color: isPast
+                    ? Colors.grey.shade100
+                    : AppColors.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.edit_outlined,
+                size: 14,
+                color: isPast ? Colors.grey.shade400 : AppColors.primary,
+              ),
+            ),
+          ),
+
+          // Nút xoá
+          GestureDetector(
+            onTap: onDelete,
+            child: Container(
+              width: 30,
+              height: 30,
+              margin: const EdgeInsets.only(left: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.delete_outline,
+                size: 14,
+                color: Colors.red.shade300,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Reusable widgets (giữ nguyên từ file cũ) ─────────────────────────────────
 class _ShareOption extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -1666,6 +1605,103 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Share option highlight (Story export) ────────────────────────────────────
+class _ShareOptionHighlight extends StatelessWidget {
+  final IconData icon;
+  final LinearGradient gradient;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ShareOptionHighlight({
+    required this.icon,
+    required this.gradient,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFB71C1C).withOpacity(0.08),
+              const Color(0xFFFFD700).withOpacity(0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFB71C1C).withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFB71C1C).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.brownDeep,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFB71C1C).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'MỚI',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFB71C1C),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

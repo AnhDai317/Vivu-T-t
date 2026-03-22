@@ -1,3 +1,9 @@
+// ── PATCH CHO home_viewmodel.dart ────────────────────────────────────────────
+// Thêm method reorderActivity() vào class HomeViewModel.
+// Các phần còn lại giữ nguyên.
+//
+// Dán đoạn này vào bên trong class HomeViewModel, sau method deleteActivity()
+
 import 'package:flutter/material.dart';
 import '../../data/interfaces/repositories/itrip_repository.dart';
 import '../../domain/entities/trip.dart';
@@ -104,7 +110,45 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
-  /// Thêm activity từ màn hình Destinations vào một trip cụ thể
+  // ── MỚI: Kéo thả sắp xếp lại thứ tự activities ─────────────────────────
+  /// [oldIndex] và [newIndex] là index trong danh sách activities của trip.
+  /// ReorderableListView gọi method này sau khi user thả.
+  Future<void> reorderActivity({
+    required String tripId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    // Tìm trip
+    final tripIdx = _trips.indexWhere((t) => t.id == tripId);
+    if (tripIdx < 0) return;
+
+    final trip = _trips[tripIdx];
+    final acts = List<TripActivity>.from(trip.activities);
+
+    // ReorderableListView đặc thù: nếu kéo xuống dưới, newIndex tự động +1
+    if (newIndex > oldIndex) newIndex -= 1;
+
+    // Cập nhật optimistic UI ngay lập tức (không chờ DB)
+    final moved = acts.removeAt(oldIndex);
+    acts.insert(newIndex, moved);
+
+    _trips[tripIdx] = trip.copyWith(activities: acts);
+    notifyListeners();
+
+    // Persist xuống DB — cập nhật sort_order từng activity
+    try {
+      await _tripRepository.reorderActivities(
+        tripId: tripId,
+        orderedActivityIds: acts.map((a) => a.id).toList(),
+      );
+    } catch (e) {
+      // Rollback nếu lỗi
+      _trips[tripIdx] = trip;
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
   Future<void> addActivityFromDestination({
     required String tripId,
     required String activityTitle,

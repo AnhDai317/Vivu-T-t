@@ -70,7 +70,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// FIX: Truyền HomeViewModel xuống DestinationsScreen qua Provider
   void _goToDestinations() {
     final homeVm = context.read<HomeViewModel>();
     Navigator.push(
@@ -97,27 +96,35 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
+  // ── FIX: Chỉ lấy reminder trong ngày HÔM NAY ──────────────────────────────
   List<String> _getUpcomingReminders(HomeViewModel vm) {
     final reminders = <String>[];
     final now = DateTime.now();
-    final tomorrow = DateTime(now.year, now.month, now.day + 1, 23, 59);
+
+    // FIX: Chỉ đến cuối hôm nay, không lấy ngày mai
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
     for (final trip in vm.trips) {
-      if (!trip.isPast || trip.isToday) {
-        if (trip.startDate.isBefore(tomorrow)) {
-          for (final act in trip.activities) {
-            final actTime = DateTime(
-              trip.startDate.year,
-              trip.startDate.month,
-              trip.startDate.day,
-              act.hour,
-              act.minute,
-            );
-            if (actTime.isAfter(now) && actTime.isBefore(tomorrow)) {
-              final h = act.hour.toString().padLeft(2, '0');
-              final m = act.minute.toString().padLeft(2, '0');
-              reminders.add('$h:$m — ${act.title}');
-            }
-          }
+      // Chỉ xét trip của HÔM NAY
+      final isToday =
+          trip.startDate.year == now.year &&
+          trip.startDate.month == now.month &&
+          trip.startDate.day == now.day;
+      if (!isToday) continue;
+
+      for (final act in trip.activities) {
+        final actTime = DateTime(
+          trip.startDate.year,
+          trip.startDate.month,
+          trip.startDate.day,
+          act.hour,
+          act.minute,
+        );
+        // Chỉ lấy các activity sau giờ hiện tại và trong hôm nay
+        if (actTime.isAfter(now) && actTime.isBefore(todayEnd)) {
+          final h = act.hour.toString().padLeft(2, '0');
+          final m = act.minute.toString().padLeft(2, '0');
+          reminders.add('$h:$m — ${act.title}');
         }
       }
     }
@@ -154,7 +161,7 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header ─────────────────────────────────────────
+                // ── Header ───────────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
@@ -234,6 +241,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
 
+                // ── Reminder banner ───────────────────────────────────────
                 if (reminders.isNotEmpty && !_reminderDismissed)
                   _ReminderBanner(
                     count: reminders.length,
@@ -244,6 +252,7 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 16),
 
+                // ── Hero banner ───────────────────────────────────────────
                 _HeroBanner(
                   daysLeft: daysLeft,
                   lunarYear: lunarYear,
@@ -255,6 +264,7 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
+                // ── Menu buttons ──────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -302,7 +312,6 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 28),
 
                 _DestinationsSection(
-                  // FIX: dùng callback qua _goToDestinations để có Provider
                   onViewAll: _goToDestinations,
                   onOpenMaps: _openMaps,
                 ),
@@ -314,92 +323,134 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ── FIX: Reminder sheet — SingleChildScrollView để không overflow ──────────
   void _showReminderSheet(List<String> reminders) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      // FIX: isScrollControlled để sheet không bị giới hạn chiều cao
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (_) => SafeArea(
+        // FIX: SafeArea bao ngoài để tránh notch/navbar
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            // FIX: mainAxisSize.min để sheet tự co theo nội dung
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Text('🔔', style: TextStyle(fontSize: 20)),
-                const SizedBox(width: 8),
-                Text(
-                  'Sắp diễn ra hôm nay',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.brownDeep,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...reminders.map(
-              (r) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.15),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.schedule_rounded,
-                      color: AppColors.primary,
-                      size: 16,
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('🔔', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Sắp diễn ra hôm nay',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.brownDeep,
                     ),
-                    const SizedBox(width: 10),
-                    Text(
-                      r,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.brownDeep,
+                  ),
+                  const Spacer(),
+                  // FIX: Nút đóng rõ ràng
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.grey.shade500,
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // FIX: Giới hạn chiều cao list, scroll nếu nhiều item
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: reminders
+                        .map(
+                          (r) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primary.withOpacity(0.15),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.schedule_rounded,
+                                  color: AppColors.primary,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    r,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.brownDeep,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Reminder Banner ───────────────────────────────────────────────────────────
+// ── Reminder Banner ────────────────────────────────────────────────────────────
 class _ReminderBanner extends StatelessWidget {
   final int count;
   final String firstItem;
   final VoidCallback onTap;
   final VoidCallback onDismiss;
+
   const _ReminderBanner({
     required this.count,
     required this.firstItem,
@@ -463,7 +514,7 @@ class _ReminderBanner extends StatelessWidget {
   }
 }
 
-// ── Hero Banner ───────────────────────────────────────────────────────────────
+// ── Hero Banner ────────────────────────────────────────────────────────────────
 class _HeroBanner extends StatelessWidget {
   final int daysLeft;
   final int lunarYear;
@@ -471,6 +522,7 @@ class _HeroBanner extends StatelessWidget {
   final String tetEmoji;
   final Weather? weather;
   final bool weatherLoading;
+
   const _HeroBanner({
     required this.daysLeft,
     required this.lunarYear,
@@ -656,12 +708,13 @@ class _HeroBanner extends StatelessWidget {
   }
 }
 
-// ── Menu Button ───────────────────────────────────────────────────────────────
-class _MenuBtn extends StatelessWidget {
+// ── Menu Button ────────────────────────────────────────────────────────────────
+class _MenuBtn extends StatefulWidget {
   final IconData icon;
   final String line1, line2;
   final Color color;
   final VoidCallback onTap;
+
   const _MenuBtn({
     required this.icon,
     required this.line1,
@@ -671,54 +724,85 @@ class _MenuBtn extends StatelessWidget {
   });
 
   @override
+  State<_MenuBtn> createState() => _MenuBtnState();
+}
+
+class _MenuBtnState extends State<_MenuBtn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 100),
+    lowerBound: 0.92,
+    upperBound: 1.0,
+    value: 1.0,
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: color.withOpacity(0.18),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+      onTapDown: (_) => _ctrl.reverse(),
+      onTapUp: (_) {
+        _ctrl.forward();
+        widget.onTap();
+      },
+      onTapCancel: () => _ctrl.forward(),
+      child: ScaleTransition(
+        scale: _ctrl,
+        child: Column(
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withOpacity(0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(widget.icon, color: widget.color, size: 30),
+              ),
             ),
-            child: Center(child: Icon(icon, color: color, size: 30)),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            line1,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: AppColors.brownDeep,
+            const SizedBox(height: 7),
+            Text(
+              widget.line1,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.brownDeep,
+              ),
             ),
-          ),
-          Text(
-            line2,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade500,
+            Text(
+              widget.line2,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Trips Section ─────────────────────────────────────────────────────────────
+// ── Trips Section ──────────────────────────────────────────────────────────────
 class _TripsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   final ValueChanged<DateTime> onTapCard;
+
   const _TripsSection({required this.onViewAll, required this.onTapCard});
 
   @override
@@ -847,9 +931,11 @@ class _TripsSection extends StatelessWidget {
   }
 }
 
+// ── Trip Card ──────────────────────────────────────────────────────────────────
 class _TripCard extends StatelessWidget {
   final Trip trip;
   final VoidCallback onTap;
+
   const _TripCard({required this.trip, required this.onTap});
 
   @override
@@ -1015,10 +1101,11 @@ class _TripCard extends StatelessWidget {
   }
 }
 
-// ── Destinations Section ──────────────────────────────────────────────────────
+// ── Destinations Section ───────────────────────────────────────────────────────
 class _DestinationsSection extends StatelessWidget {
   final VoidCallback onViewAll;
   final Function(SpringDestination) onOpenMaps;
+
   const _DestinationsSection({
     required this.onViewAll,
     required this.onOpenMaps,

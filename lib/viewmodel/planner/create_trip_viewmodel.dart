@@ -32,7 +32,7 @@ class CreateTripViewModel extends ChangeNotifier {
   }) {
     final act = TripActivity(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      tripId: '', // sẽ được gán khi createTrip
+      tripId: '',
       hour: hour,
       minute: minute,
       title: title,
@@ -67,18 +67,60 @@ class CreateTripViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final tripId = DateTime.now().millisecondsSinceEpoch.toString();
+      // ── FIX: Kiểm tra đã có trip cùng ngày chưa ────────────────────────
+      final existingTrips = await _tripRepository.getTrips();
+      final sel = selectedDate;
+      final sameDay = existingTrips
+          .where(
+            (t) =>
+                t.startDate.year == sel.year &&
+                t.startDate.month == sel.month &&
+                t.startDate.day == sel.day,
+          )
+          .toList();
 
-      // Gắn tripId vào activities
+      if (sameDay.isNotEmpty) {
+        // ── Ngày đã tồn tại: thêm activities vào trip cũ ─────────────────
+        final existingTrip = sameDay.first;
+
+        // Tính sort_order tiếp theo
+        int maxOrder = existingTrip.activities.length;
+
+        for (int i = 0; i < activities.length; i++) {
+          final act = activities[i];
+          final newId = '${DateTime.now().microsecondsSinceEpoch}_$i';
+          await _tripRepository.addActivity(
+            tripId: existingTrip.id,
+            activityId: newId,
+            hour: act.hour,
+            minute: act.minute,
+            title: act.title,
+            location: act.location,
+          );
+          maxOrder++;
+        }
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      // ── Ngày chưa tồn tại: tạo trip mới ─────────────────────────────────
+      // ID dùng ngày cố định để tránh trùng khi tạo lại cùng ngày
+      final tripId =
+          'trip_${sel.year}${sel.month.toString().padLeft(2, '0')}${sel.day.toString().padLeft(2, '0')}_${DateTime.now().millisecondsSinceEpoch}';
+
       final finalActivities = activities
+          .asMap()
+          .entries
           .map(
-            (a) => TripActivity(
-              id: a.id,
+            (e) => TripActivity(
+              id: '${tripId}_act_${e.key}',
               tripId: tripId,
-              hour: a.hour,
-              minute: a.minute,
-              title: a.title,
-              location: a.location,
+              hour: e.value.hour,
+              minute: e.value.minute,
+              title: e.value.title,
+              location: e.value.location,
             ),
           )
           .toList();
@@ -87,7 +129,7 @@ class CreateTripViewModel extends ChangeNotifier {
         id: tripId,
         title: titleController.text.trim(),
         startDate: selectedDate,
-        endDate: selectedDate, // 1 ngày nên start = end
+        endDate: selectedDate,
         activities: finalActivities,
       );
 
