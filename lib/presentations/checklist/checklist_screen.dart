@@ -28,7 +28,11 @@ class _ChecklistScreenState extends State<ChecklistScreen>
   @override
   void initState() {
     super.initState();
-    _loadWeather();
+    // Load weather theo ngày mặc định (hôm nay)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final vm = context.read<ChecklistViewModel>();
+      _loadWeather(vm.selectedDate);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vm = context.read<ChecklistViewModel>();
       if (vm.categories.isEmpty && !vm.isLoading) {
@@ -37,10 +41,26 @@ class _ChecklistScreenState extends State<ChecklistScreen>
     });
   }
 
-  Future<void> _loadWeather() async {
-    setState(() => _weatherLoading = true);
+  Future<void> _loadWeather(DateTime date) async {
+    setState(() {
+      _weatherLoading = true;
+      _weather = null; // reset khi đổi ngày
+    });
     try {
-      final w = await _weatherApi.getCurrentWeather();
+      final now = DateTime.now();
+      final isToday =
+          date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day;
+
+      Weather? w;
+      if (isToday) {
+        // Hôm nay: lấy thời tiết hiện tại
+        w = await _weatherApi.getCurrentWeather();
+      } else {
+        // Ngày khác: lấy forecast của ngày đó
+        w = await _weatherApi.getForecastForDate(date);
+      }
       if (mounted) setState(() => _weather = w);
     } catch (_) {
     } finally {
@@ -128,7 +148,10 @@ class _ChecklistScreenState extends State<ChecklistScreen>
         child: child!,
       ),
     );
-    if (picked != null) vm.selectDate(picked);
+    if (picked != null) {
+      vm.selectDate(picked);
+      _loadWeather(picked); // reload weather theo ngày mới
+    }
   }
 
   // ── Add dialog ──────────────────────────────────────────────────────────
@@ -516,7 +539,12 @@ class _ChecklistScreenState extends State<ChecklistScreen>
                       icon: Icons.calendar_today_rounded,
                       isActive: !vm.isGeneralMode,
                       activeColor: AppColors.primary,
-                      onTap: vm.isGeneralMode ? vm.switchToDate : null,
+                      onTap: vm.isGeneralMode
+                          ? () async {
+                              await vm.switchToDate();
+                              _loadWeather(vm.selectedDate);
+                            }
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 8),
